@@ -308,6 +308,19 @@ class StatsOutput(object):
                     ] = "count of runs for a workflow by a user in the initial collection time range"
                     formatted_stats.append(stat)
 
+        """
+        "Punch card"
+            "repo_stats": {
+                "code_frequency": dict(),
+                "commit_activity": dict(),
+                "contributors": dict(),
+                "punchcard": {
+                    "total_commits": 0,
+                    "sorted_days": list(),
+                    "days": dict(),
+                },
+            },
+        """
         return formatted_stats
 
     def write_stats(self, formatted_stats):

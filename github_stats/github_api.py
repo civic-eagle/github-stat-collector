@@ -429,6 +429,18 @@ class GithubAccess(object):
         self.log.info("Loading Repo Stats (Github Insights)...")
         starttime = time.time()
         td = base_date - timedelta(days=window)
+
+        """
+        Weeks (in Github's world) start on Sunday, so we need to convert
+        our current day to the most recent Sunday to get weekly stats.
+        This matters for things like code frequency, punch card, etc.
+        The logic is:
+            1. get the isoweekday value: (0-6) of base_date
+              * This is essentially a count of the number of days since Sunday
+            2. turn that into a timedelta object and subtract it from base_date
+        """
+        sunday = base_date - timedelta(days=base_date.isoweekday())
+
         """
         Code frequency:
         [
@@ -439,7 +451,10 @@ class GithubAccess(object):
           ]
         ]
         Basically tuples of (timestamp, additions, deletions)
+
+        filter dates on the week, not the day for this
         """
+        self.log.debug("Loading code frequency stats...")
         url = f"/repos/{self.repo_name}/stats/code_frequency"
         for week in self._github_query(url):
             if not week:
@@ -447,7 +462,7 @@ class GithubAccess(object):
                 continue
             timestamp, additions, deletions = week
             ts_date = datetime.utcfromtimestamp(timestamp)
-            if ts_date > base_date or ts_date < td:
+            if ts_date > base_date or ts_date < sunday:
                 self.log.debug(f"{ts_date} outside defined window, skipping")
                 continue
             self.log.debug(
@@ -477,7 +492,10 @@ class GithubAccess(object):
         ]
         A list of each day of the week and the number of commits that day, timestamp is
         that week's Sunday. So each day moves forward
+
+        filter dates on the week, not the day for this
         """
+        self.log.debug("Loading commit activity stats...")
         url = f"/repos/{self.repo_name}/stats/commit_activity"
         for week in self._github_query(url):
             if not week:
@@ -485,7 +503,7 @@ class GithubAccess(object):
                 continue
             week_ts = week["week"]
             ts_date = datetime.utcfromtimestamp(week_ts)
-            if ts_date > base_date or ts_date < td:
+            if ts_date > base_date or ts_date < sunday:
                 self.log.debug(f"{ts_date} outside defined window, skipping")
                 continue
             self.stats["repo_stats"]["commit_activity"][str(ts_date)] = {
@@ -500,6 +518,7 @@ class GithubAccess(object):
         """
         Contributors:
         """
+        self.log.debug("Loading contributor stats...")
         url = f"/repos/{self.repo_name}/stats/contributors"
         for contributor in self._github_query(url):
             if not contributor:
@@ -512,7 +531,7 @@ class GithubAccess(object):
             }
             for week in contributor["weeks"]:
                 ts_date = datetime.utcfromtimestamp(week["w"])
-                if ts_date > base_date or ts_date < td:
+                if ts_date > base_date or ts_date < sunday:
                     self.log.debug(f"{ts_date} outside defined window, skipping")
                     continue
                 if week["c"] < 1:
@@ -544,6 +563,7 @@ class GithubAccess(object):
         ]
         Essentially "tuples" (but JSON doesn't have tuples) of (number referencing day of week, hour, commit count)
         """
+        self.log.debug("Loading punch card stats...")
         url = f"/repos/{self.repo_name}/stats/punch_card"
         for hourtuple in self._github_query(url):
             if not hourtuple:
