@@ -1,0 +1,25 @@
+repo:
+  org: organization
+  name: organization/repo
+  branches:
+    main: develop
+    release: release
+  tag_patterns:
+    - name: release_tag
+      pattern: "$v"
+  labels:
+    bugs:
+      - bug
+    features:
+      - enhancement
+    security:
+      - security
+    documentation:
+      - documentation
+    tech-debt:
+      - dependencies
+    infrastructure:
+      - infrastructure
+
+google:
+  project_id: google-project
