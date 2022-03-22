@@ -428,7 +428,6 @@ class GithubAccess(object):
         """
         self.log.info("Loading Repo Stats (Github Insights)...")
         starttime = time.time()
-        td = base_date - timedelta(days=window)
 
         """
         Weeks (in Github's world) start on Sunday, so we need to convert
