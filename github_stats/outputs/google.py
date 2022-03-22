@@ -4,13 +4,11 @@ Google Cloud leverages the OpenCensus library (very similar to the OpenTelemetry
 More documentation about OpenCensus is here: https://opencensus.io
 More documentation on the StackDriver extension is here: https://cloud.google.com/monitoring/custom-metrics/open-census
 """
-from copy import deepcopy
 from github_stats.outputs import StatsOutput
 from opencensus.ext.stackdriver import stats_exporter
 from opencensus.stats import aggregation, measure, stats, view
 from opencensus.tags import tag_key, tag_map, tag_value
 import logging
-import pprint
 import time
 
 

@@ -24,25 +24,34 @@ on:
 jobs:
   linting:
     name: General File Linting
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
       - name: Yaml file linting
         run: |
           docker run --rm \
           -v $(pwd):/data \
           cytopia/yamllint \
           -c yamllint.yml -s .
+
       - name: Pipeline Python Formatting
         run: |
           docker run --rm \
           -v $(pwd):/data \
           cytopia/black \
           --check --diff .
-      # specify folders here to avoid trying to lint files in node_modules and such
+
       - name: Pipeline Python Linting
         run: |
           docker run --rm \
           -v $(pwd):/apps \
           alpine/flake8:latest .
+
+      - name: ensure shell scripts are formatted
+        run: |
+          while IFS= read -r -d '' filename; do
+          echo "processing ${filename}"
+          docker run --rm -v "$(pwd):/mnt" koalaman/shellcheck:latest -x "${filename}"
+          done < <(find . -type f -name "*.sh" ! -path "*/node_modules/*" ! -path "*/.git/*" -print0)
