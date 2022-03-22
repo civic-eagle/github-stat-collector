@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "github-stats"
+version = "0.1.0"
+description = "Tool to collect and format Github repo stats for display in a TSDB"
+authors = ["John Seekins <john@civiceagle.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+requests = "^2.27.1"
+regex = "^2022.3.2"
+PyYAML = "^6.0"
+opencensus = "^0.8.0"
+opencensus-ext-stackdriver = "^0.8.0"
+
+[tool.poetry.dev-dependencies]
+flake8 = "^4.0.1"
+black = "^22.1.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
