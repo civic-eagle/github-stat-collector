@@ -30,6 +30,10 @@ class StatsOutput(object):
         Then we can process any additional stats or formatting
         changes needed for individual outputs.
 
+        Each "section" below is simply a group of metrics being
+        re-formatted from the initial collection. Sectioning just helps
+        us find groups easier
+
         :returns: list of stats ready to ship
         :rtype: list
         """

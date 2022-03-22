@@ -1,0 +1,48 @@
+name: CI
+on:
+  push:
+    branches:
+      - "**"
+    paths-ignore:
+      - "**/*.md"
+      - "**/docs/**"
+
+# Jobs in this workflow include:
+#
+# - build: identifies changes in packages, builds the enview/tester docker image (used for running tests)
+# - backend-tests: checks eslint and software tests for backend (only if backend changes)
+# - browser-tests: runs browser tests against full stack after building enview/builder and enview/pipeline images, ingesting/seeding data
+# - web-tests: checks eslint for web (only if web changes)
+# - backend-deploy-build: builds and pushes enview image to Google Container Registry (only if develop branch or tagged release)
+# - backend-deploy-worker: runs backend-deploy custom action for worker service, eg Google App Engine deploy (only if develop branch or tagged release)
+# - backend-deploy-api: runs backend-deploy custom action for default service (api), eg Google App Engine deploy (only if develop branch or tagged release)
+# - web-deploy: builds web and deploys to firebase, notifies JIRA (only if develop branch or tagged release)
+# - data-pipeline-deploy: deploys pipeline using pipeline's deploy script (only if develop branch or tagged release)
+# - backend-jira-deploy-webook: notifies JIRA (if PROD)
+# - deploy-fail-notification: notifies Slack on deploy failure
+# - prod-deploy-success-notification: notifies Slack on PROD deploy success
+jobs:
+  linting:
+    name: General File Linting
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Yaml file linting
+        run: |
+          docker run --rm \
+          -v $(pwd):/data \
+          cytopia/yamllint \
+          -c yamllint.yml -s .
+      - name: Pipeline Python Formatting
+        run: |
+          docker run --rm \
+          -v $(pwd):/data \
+          cytopia/black \
+          --check --diff .
+      # specify folders here to avoid trying to lint files in node_modules and such
+      - name: Pipeline Python Linting
+        run: |
+          docker run --rm \
+          -v $(pwd):/apps \
+          alpine/flake8:latest .
