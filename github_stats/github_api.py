@@ -103,6 +103,7 @@ class GithubAccess(object):
         Actual stats object
         """
         self.stats = {
+            "collection_date": None,
             "repo_stats": {
                 "code_frequency": dict(),
                 "commit_activity": dict(),
@@ -285,12 +286,17 @@ class GithubAccess(object):
                 self.stats["pull_requests"]["labels"][labelname][key] += 1
                 self.stats["pull_requests"]["labels"][labelname]["pulls"].append(title)
 
+    def _set_collection_date(self, date):
+        if not self.stats["collection_date"]:
+            self.stats["collection_date"] = date
+
     def load_all_stats(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
         """
         Wrapper to execute all stat collection functions
 
         :returns: None
         """
+        self._set_collection_date(base_date)
         self.load_pull_requests(base_date, window)
         self.load_branches(base_date, window)
         self.load_releases(base_date, window)
@@ -306,6 +312,7 @@ class GithubAccess(object):
 
         :returns: None
         """
+        self._set_collection_date(base_date)
         td = base_date - timedelta(days=window)
         starttime = time.time()
         self.log.info("Loading Pull Request Data...")
@@ -356,6 +363,7 @@ class GithubAccess(object):
 
         :returns: None
         """
+        self._set_collection_date(base_date)
         td = base_date - timedelta(days=window)
         starttime = time.time()
         self.log.info("Loading branch details...")
@@ -427,6 +435,7 @@ class GithubAccess(object):
         :returns: None
         """
         self.log.info("Loading Repo Stats (Github Insights)...")
+        self._set_collection_date(base_date)
         starttime = time.time()
 
         """
@@ -644,6 +653,7 @@ class GithubAccess(object):
         :returns: None
         """
         self.log.info("Loading Dependabot details...")
+        self._set_collection_date(base_date)
         # url = f"/repos/{self.repo_name}/code-scanning/alerts"
 
     def load_workflow_runs(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
@@ -653,6 +663,7 @@ class GithubAccess(object):
         :returns: None
         """
         self.log.info("Loading workflow details...")
+        self._set_collection_date(base_date)
         starttime = time.time()
         td = base_date - timedelta(days=window)
         url = f"/repos/{self.repo_name}/actions/runs"
