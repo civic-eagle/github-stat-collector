@@ -268,7 +268,6 @@ class StatsOutput(object):
                                   'workflows': {'CI': {'failure': 1, 'success': 7},
                                          'security scans': {'success': 4}}},
         """
-        users = stats_object.get("users", {})
         user_descriptions = {
             "total_branches": "all existing branches created by user",
             "total_closed_pull_requests": "any closed pull requests",
@@ -277,7 +276,7 @@ class StatsOutput(object):
             "total_open_pull_requests": "PRs open in time range by user",
             "total_pull_requests": "all created PRs by user",
         }
-        for user, data in users.items():
+        for user, data in stats_object.get("users", {}).items():
             for wkstat, desc in user_descriptions.items():
                 stat = deepcopy(self.tmpobj)
                 stat["name"] = f"users.{wkstat}"
@@ -309,18 +308,165 @@ class StatsOutput(object):
                     formatted_stats.append(stat)
 
         """
-        "Punch card"
-            "repo_stats": {
-                "code_frequency": dict(),
-                "commit_activity": dict(),
-                "contributors": dict(),
-                "punchcard": {
-                    "total_commits": 0,
-                    "sorted_days": list(),
-                    "days": dict(),
-                },
-            },
+        "Punch card" stats:
+
+         'repo_stats': {
+         'code_frequency': {'2022-03-20 00:00:00': {'additions': 389,
+                                                           'deletions': -294}},
         """
+        for week, counts in (
+            stats_object["repo_stats"].get("code_frequency", {}).items()
+        ):
+            stat = deepcopy(self.tmpobj)
+            stat["name"] = "total_weekly_line_changes"
+            stat["labels"]["week"] = week
+            stat["labels"]["type"] = "additions"
+            stat[
+                "description"
+            ] = "The total count of line changes made during the week (value may change as a week progresses)"
+            stat["value"] = counts["additions"]
+            formatted_stats.append(stat)
+            stat = deepcopy(self.tmpobj)
+            stat["name"] = "total_weekly_line_changes"
+            stat["labels"]["week"] = week
+            stat["labels"]["type"] = "deletions"
+            stat["value"] = counts["deletions"]
+            stat[
+                "description"
+            ] = "The total count of line changes made during the week (value may change as a week progresses)"
+            formatted_stats.append(stat)
+
+        """
+                'commit_activity': {'2022-03-20 00:00:00': {'daily': {'2022-03-20 00:00:00': 2,
+                                                                      '2022-03-21 00:00:00': 7,
+                                                                      '2022-03-22 00:00:00': 9,
+                                                                      '2022-03-23 00:00:00': 2,
+                                                                      '2022-03-24 00:00:00': 0,
+                                                                      '2022-03-25 00:00:00': 0,
+                                                                      '2022-03-26 00:00:00': 0},
+                                                            'total_commits': 20}},
+        """
+        for week, details in (
+            stats_object["repo_stats"].get("commit_activity", {}).items()
+        ):
+            stat = deepcopy(self.tmpobj)
+            stat["name"] = "total_weekly_commits"
+            stat["labels"]["week"] = week
+            stat["value"] = details["total_commits"]
+            stat[
+                "description"
+            ] = "Total count of commits in a week (will change as a week progresses)"
+            formatted_stats.append(stat)
+            for day, value in details["daily"].items():
+                stat = deepcopy(self.tmpobj)
+                stat["name"] = "total_daily_commits"
+                stat["labels"]["week"] = week
+                stat["labels"]["day"] = day
+                stat["value"] = value
+                stat[
+                    "description"
+                ] = "Total count of commits in a week (will change as a week progresses)"
+                formatted_stats.append(stat)
+
+        """
+                'contributors': {'Jefferson Jeffries': {'total_commits': 400,
+                                                  'weeks': {'2022-03-20 00:00:00': {'additions': 9,
+                                                                                    'commits': 2,
+                                                                                    'deletions': 5}}}},
+        """
+        for name, details in stats_object["repo_stats"].get("contributors", {}).items():
+            stat = deepcopy(self.tmpobj)
+            stat["name"] = "total_contributor_commits"
+            stat["labels"]["name"] = name
+            stat["value"] = details["total_commits"]
+            stat["description"] = "Total commits from a contributor"
+            formatted_stats.append(stat)
+            for week, wd in details["weeks"].items():
+                stat = deepcopy(self.tmpobj)
+                stat["name"] = "total_weekly_contributor_commits"
+                stat["labels"]["name"] = name
+                stat["labels"]["week"] = week
+                stat["description"] = "Weekly commits made by a contributor"
+                stat["value"] = wd["commits"]
+                formatted_stats.append(stat)
+                stat = deepcopy(self.tmpobj)
+                stat["name"] = "total_weekly_contributor_additions"
+                stat["labels"]["name"] = name
+                stat["labels"]["week"] = week
+                stat["description"] = "Weekly additions made by a contributor"
+                stat["value"] = wd["additions"]
+                formatted_stats.append(stat)
+                stat = deepcopy(self.tmpobj)
+                stat["name"] = "total_weekly_contributor_deletions"
+                stat["labels"]["name"] = name
+                stat["labels"]["week"] = week
+                stat["description"] = "Weekly deletions made by a contributor"
+                stat["value"] = wd["deletions"]
+                formatted_stats.append(stat)
+
+        """
+                'punchcard': {'days': {'Friday': {0: 46,
+                                                  1: 20,
+                                                  2: 6,
+                                                  3: 0,
+                                                  4: 3,
+                                                  5: 5,
+                                                  6: 6,
+                                                  7: 7,
+                                                  8: 12,
+                                                  9: 39,
+                                                  10: 65,
+                                                  11: 109,
+                                                  12: 85,
+                                                  13: 108,
+                                                  14: 109,
+                                                  15: 123,
+                                                  16: 145,
+                                                  17: 140,
+                                                  18: 113,
+                                                  19: 62,
+                                                  20: 62,
+                                                  21: 48,
+                                                  22: 54,
+                                                  23: 41,
+                                                  'busiest_hour': 16,
+                                                  'total_commits': 1408},
+                                       'Wednesday': {0: 45,
+                                                     1: 29,
+                                                     2: 10,
+                                                     3: 8,
+                                                     4: 13,
+                                                     5: 5,
+                                                     6: 3,
+                                                     7: 3,
+                                                     8: 11,
+                                                     9: 29,
+                                                     10: 67,
+                                                     11: 100,
+                                                     12: 107,
+                                                     13: 143,
+                                                     14: 157,
+                                                     15: 165,
+                                                     16: 150,
+                                                     17: 153,
+                                                     18: 106,
+                                                     19: 58,
+                                                     20: 63,
+                                                     21: 64,
+                                                     22: 49,
+                                                     23: 45,
+                                                     'busiest_hour': 15,
+                                                     'total_commits': 1583}},
+                              'sorted_days': [('Thursday', 1610),
+                                              ('Wednesday', 1583),
+                                              ('Friday', 1408),
+                                              ('Tuesday', 1381),
+                                              ('Saturday', 1141),
+                                              ('Monday', 223),
+                                              ('Sunday', 202)],
+        """
+        # punch = stats_object["repo_stats"].get("punchcard", {})
+
         return formatted_stats
 
     def write_stats(self, formatted_stats):
