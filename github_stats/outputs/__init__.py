@@ -3,7 +3,7 @@ import logging
 
 
 class StatsOutput(object):
-    def __init__(self, config):
+    def __init__(self, config, timestamp=0.0):
         self.log = logging.getLogger("github-stats.output")
         default_labels = {"repository_name": config["repo"]["name"]}
         self.tmpobj = {
@@ -13,6 +13,8 @@ class StatsOutput(object):
             "description": "",
             "measurement_type": "count",
         }
+        if timestamp != 0.0:
+            self.tmpobj["timestamp"] = timestamp
         self.main_branch = config["repo"]["branches"].get("main", "main")
         self.release_branch = config["repo"]["branches"].get("release", "main")
 

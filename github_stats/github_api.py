@@ -313,6 +313,7 @@ class GithubAccess(object):
         :returns: None
         """
         self._set_collection_date(base_date)
+        self.log.info(f"Collection timestamp: {base_date.timestamp()}")
         td = base_date - timedelta(days=window)
         starttime = time.time()
         self.log.info("Loading Pull Request Data...")

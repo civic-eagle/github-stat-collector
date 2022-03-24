@@ -1,3 +1,8 @@
+# Installing
+
+This tool relies on `poetry` for dependency management. If you already have `poetry` installed on your system, simply `poetry update` to pull in all needed dependencies.
+
+# Metrics formatting
 
 We'll adhere to the OpenMetrics standard as much as possible:
 
@@ -14,11 +19,16 @@ The most frequently avaiable user mapping is the full user name (e.g. `Joe Smith
 Every individual series generated with this tool will produce a JSON-compatible object like the following:
 
 ```json
-{"description": "all created PRs by user",
- "labels": {"repository_name": "<>", "user": "<>"},
- "measurement_type": "count",
- "name": "users.total_pull_requests",
- "value": 0}
+{
+  "description": "all created PRs by user",
+  "labels": {
+    "repository_name": "<>",
+    "user": "<>"
+  },
+  "measurement_type": "count",
+  "name": "users.total_pull_requests",
+  "value": 0
+}
 ```
 
 ## Individual object keys and their usage

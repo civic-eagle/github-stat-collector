@@ -37,10 +37,10 @@ def cli_opts():
         help="Number of days worth of data to collect",
     )
     parser.add_argument(
-        "--end-date",
-        default=datetime.today().strftime("%Y-%m-%d"),
-        type=str,
-        help="Date to start looking at data from",
+        "--timestamp",
+        default=time.time(),
+        type=float,
+        help="UTC timestamp to start looking at data from",
     )
     return parser.parse_args()
 
@@ -53,11 +53,11 @@ def main():
     if args.debug:
         logger.setLevel(logging.DEBUG)
     config = yaml.safe_load(open(args.config, "r", encoding="utf-8").read())
-    end_date = datetime.strptime(args.end_date, "%Y-%m-%d")
+    timestamp = datetime.fromtimestamp(args.timestamp)
     starttime = time.time()
     goog = GoogleOutput(config)
     gh = GithubAccess(config)
-    gh.load_all_stats(end_date, args.window)
+    gh.load_all_stats(timestamp, args.window)
     goog.format_stats(gh.stats)
     goog.write_stats()
 
