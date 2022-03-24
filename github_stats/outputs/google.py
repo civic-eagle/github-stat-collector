@@ -125,7 +125,11 @@ class GoogleOutput(StatsOutput):
             if name not in users:
                 users[name] = {
                     "description": stat["description"],
-                    "labels": {k: v for k, v in stat["labels"].items() if k not in filtered_keys},
+                    "labels": {
+                        k: v
+                        for k, v in stat["labels"].items()
+                        if k not in filtered_keys
+                    },
                     "measurement_type": stat["measurement_type"],
                     "name": stat["name"],
                     "value": stat["value"],
