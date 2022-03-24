@@ -67,6 +67,96 @@ class GoogleOutput(StatsOutput):
                     "description": stat["description"],
                     "measurement_type": stat["measurement_type"],
                 }
+        """
+        StackDriver doesn't support negative values, so we have to do some hacking
+        to actually track line changes
+
+        'weekly_contributor_line_changes_total': {'description': 'Weekly line changes made by a contributor',
+                                           'keys': ['repository_name', 'name', 'week', 'type'],
+                                           'measurement_type': 'count',
+                                           'stats': [{'description': 'Weekly line changes made by a contributor',
+                                                      'labels': {'name': 'Jefferson Jeffries',
+                                                                 'repository_name': 'repo',
+                                                                 'type': 'additions',
+                                                                 'week': '2022-03-20 '00:00:00'},
+                                                      'measurement_type': 'count',
+                                                      'name': 'weekly_contributor_line_changes_total',
+                                                      'value': 107},
+                                                     {'description': 'Weekly line changes made by a contributor',
+                                                      'labels': {'name': 'Jefferson Jeffries',
+                                                                 'repository_name': 'repo',
+                                                                 'type': 'deletions',
+                                                                 'week': '2022-03-20 00:00:00'},
+                                                      'measurement_type': 'count',
+                                                      'name': 'weekly_contributor_line_changes_total',
+                                                      'value': 99}},
+        'weekly_line_changes_total': {'description': 'count of line changes during a week',
+                               'keys': ['repository_name', 'type', 'week'],
+                               'measurement_type': 'count',
+                               'stats': [{'description': 'count of line changes during a week',
+                                          'labels': {'repository_name': 'repo',
+                                                     'type': 'additions',
+                                                     'week': '2022-03-20 00:00:00'},
+                                          'measurement_type': 'count',
+                                          'name': 'weekly_line_changes_total',
+                                          'value': 389},
+                                         {'description': 'count of line changes during a week',
+                                          'labels': {'repository_name': 'repo',
+                                                     'type': 'deletions',
+                                                     'week': '2022-03-20 00:00:00'},
+                                          'measurement_type': 'count',
+                                          'name': 'weekly_line_changes_total',
+                                          'value': -294}]},
+        """
+        filtered_keys = ["type"]
+
+        contrib_changes = self.output_stats.pop(
+            "weekly_contributor_line_changes_total", {}
+        )
+        self.output_stats["weekly_contributor_line_changes_total"] = {
+            "description": contrib_changes["description"],
+            "keys": [t for t in contrib_changes["keys"] if t not in filtered_keys],
+            "measurement_type": contrib_changes["measurement_type"],
+            "stats": [],
+        }
+        users = dict()
+        for stat in contrib_changes["stats"]:
+            name = stat["labels"]["name"]
+            if name not in users:
+                users[name] = {
+                    "description": stat["description"],
+                    "labels": {k: v for k, v in stat["labels"].items() if k not in filtered_keys},
+                    "measurement_type": stat["measurement_type"],
+                    "name": stat["name"],
+                    "value": stat["value"],
+                }
+            else:
+                users[name]["value"] += stat["value"]
+        self.output_stats["weekly_contributor_line_changes_total"]["stats"] = [
+            v for v in users.values()
+        ]
+
+        total_changes = self.output_stats.pop("weekly_line_changes_total", {})
+        self.output_stats["weekly_line_changes_total"] = {
+            "description": total_changes["description"],
+            "keys": [t for t in total_changes["keys"] if t not in filtered_keys],
+            "measurement_type": total_changes["measurement_type"],
+            "stats": [],
+        }
+        tc = {
+            "description": total_changes["description"],
+            "labels": {},
+            "measurement_type": total_changes["measurement_type"],
+            "name": "",
+            "value": 0,
+        }
+        for stat in total_changes["stats"]:
+            tc["value"] += stat["value"]
+            tc["labels"] = {
+                k: v for k, v in stat["labels"].items() if k not in filtered_keys
+            }
+            tc["name"] = stat["name"]
+        self.output_stats["weekly_line_changes_total"]["stats"] = [tc]
 
     def write_stats(self):
         """

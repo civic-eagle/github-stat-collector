@@ -120,7 +120,7 @@ class StatsOutput(object):
             },
             "open_pull_requests_total": {
                 "desc": "Currently open PRs",
-                "key": "open_pull_requests",
+                "key": "total_open_pull_requests",
             },
             "inactive_pull_requests_total": {
                 "desc": "PRs updated outside the initial collection time range",
@@ -314,7 +314,7 @@ class StatsOutput(object):
                 stat["name"] = f"workflows_{key}"
                 stat["labels"]["workflow"] = k
                 stat["value"] = v[desc["key"]]
-                stat["description"] = desc
+                stat["description"] = desc["desc"]
                 stat["measurement_type"] = desc["type"]
                 formatted_stats.append(stat)
         """
@@ -408,9 +408,15 @@ class StatsOutput(object):
             stat = deepcopy(self.tmpobj)
             stat["name"] = "weekly_line_changes_total"
             stat["labels"]["type"] = "additions"
+            stat["labels"]["week"] = week
             stat["value"] = counts["additions"]
+            stat["description"] = "count of line changes during a week"
             formatted_stats.append(stat)
+            stat = deepcopy(self.tmpobj)
+            stat["name"] = "weekly_line_changes_total"
             stat["labels"]["type"] = "deletions"
+            stat["labels"]["week"] = week
+            stat["description"] = "count of line changes during a week"
             stat["value"] = counts["deletions"]
             formatted_stats.append(stat)
 
@@ -467,12 +473,20 @@ class StatsOutput(object):
                 stat["description"] = "Weekly commits made by a contributor"
                 stat["value"] = wd["commits"]
                 formatted_stats.append(stat)
+                stat = deepcopy(self.tmpobj)
                 stat["name"] = "weekly_contributor_line_changes_total"
+                stat["labels"]["name"] = name
+                stat["labels"]["week"] = week
                 stat["labels"]["type"] = "additions"
                 stat["description"] = "Weekly line changes made by a contributor"
                 stat["value"] = wd["additions"]
                 formatted_stats.append(stat)
+                stat = deepcopy(self.tmpobj)
+                stat["name"] = "weekly_contributor_line_changes_total"
+                stat["labels"]["name"] = name
+                stat["labels"]["week"] = week
                 stat["labels"]["type"] = "deletions"
+                stat["description"] = "Weekly line changes made by a contributor"
                 stat["value"] = wd["deletions"]
                 formatted_stats.append(stat)
 
