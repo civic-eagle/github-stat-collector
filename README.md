@@ -1,3 +1,8 @@
+
+We'll adhere to the OpenMetrics standard as much as possible:
+
+https://github.com/OpenObservability/OpenMetrics/blob/main/specification/OpenMetrics.md
+
 # Notes on user name formatting
 
 Because Github API endpoints don't return consistent user names between each of them, we may see _some_ overlap of users, but we attempt to get user names as close to consistent (one mapping per user) as possible.

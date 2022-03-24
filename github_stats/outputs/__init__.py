@@ -51,7 +51,7 @@ class StatsOutput(object):
         """
         commits = stats_object.get("commits", {})
         stat = deepcopy(self.tmpobj)
-        stat["name"] = "total_commits"
+        stat["name"] = "commits_total"
         stat["value"] = commits["total_commits"]
         stat[
             "description"
@@ -59,7 +59,7 @@ class StatsOutput(object):
         formatted_stats.append(stat)
         for branchname, count in commits["branch_commits"].items():
             stat = deepcopy(self.tmpobj)
-            stat["name"] = "branch_commits"
+            stat["name"] = "branch_commits_total"
             stat["value"] = count
             stat["description"] = "Count of recent commits to a specific branch"
             stat["labels"]["branch"] = branchname
@@ -67,7 +67,7 @@ class StatsOutput(object):
 
         general = stats_object.get("general", {})
         stat = deepcopy(self.tmpobj)
-        stat["name"] = "main_branch_commits"
+        stat["name"] = "main_branch_commits_total"
         stat["value"] = general["main_branch_commits"]
         stat["description"] = "commits to the configured 'main' branch for the repo"
         stat["labels"]["branch_name"] = self.main_branch
@@ -75,7 +75,7 @@ class StatsOutput(object):
 
         releases = stats_object.get("releases", {})
         stat = deepcopy(self.tmpobj)
-        stat["name"] = "total_releases"
+        stat["name"] = "releases_total"
         stat["value"] = releases["total_releases"]
         stat[
             "description"
@@ -106,31 +106,58 @@ class StatsOutput(object):
         """
         pulls = stats_object.get("pull_requests", {})
         pull_desc = {
-            "total_active_pull_requests": "PRs updated within the initial collection time range",
-            "total_closed_pull_requests": "Closed PRs (merged or otherwise)",
-            "total_draft_pull_requests": "PRs in a draft state (includes closed PRs in draft state)",
-            "total_open_pull_requests": "Currently open PRs",
-            "total_inactive_pull_requests": "PRs updated outside the initial collection time range",
-            "total_pull_requests": "All PRs created for the repo",
+            "active_pull_requests_total": {
+                "desc": "PRs updated within the initial collection time range",
+                "key": "total_active_pull_requests",
+            },
+            "closed_pull_requests_total": {
+                "desc": "Closed PRs (merged or otherwise)",
+                "key": "total_closed_pull_requests",
+            },
+            "draft_pull_requests_total": {
+                "desc": "PRs in a draft state (includes closed PRs in draft state)",
+                "key": "total_draft_pull_requests",
+            },
+            "open_pull_requests_total": {
+                "desc": "Currently open PRs",
+                "key": "open_pull_requests",
+            },
+            "inactive_pull_requests_total": {
+                "desc": "PRs updated outside the initial collection time range",
+                "key": "total_inactive_pull_requests",
+            },
+            "pull_requests_total": {
+                "desc": "All PRs created for the repo",
+                "key": "total_pull_requests",
+            },
         }
         label_desc = {
-            "total_old_prs": "prs associated with a label outside the initial collection time range",
-            "total_prs": "All PRs associated with a label",
-            "total_recent_prs": "prs associated with a label within the initial collection time range",
+            "old_labelled_prs_total": {
+                "desc": "prs associated with a label outside the initial collection time range",
+                "key": "total_old_prs",
+            },
+            "labelled_prs_total": {
+                "desc": "All PRs associated with a label",
+                "key": "total_prs",
+            },
+            "recent_labelled_prs_total": {
+                "desc": "prs associated with a label within the initial collection time range",
+                "key": "total_recent_prs",
+            },
         }
         for key, desc in pull_desc.items():
             stat = deepcopy(self.tmpobj)
             stat["name"] = key
-            stat["description"] = desc
-            stat["value"] = pulls[key]
+            stat["description"] = desc["desc"]
+            stat["value"] = pulls[desc["key"]]
             formatted_stats.append(stat)
         for label, data in pulls["labels"].items():
             for k, v in label_desc.items():
                 stat = deepcopy(self.tmpobj)
                 stat["labels"]["label"] = label
                 stat["name"] = k
-                stat["value"] = data[k]
-                stat["description"] = v
+                stat["value"] = data[v["key"]]
+                stat["description"] = v["desc"]
                 formatted_stats.append(stat)
         """
         Format branches
@@ -152,20 +179,32 @@ class StatsOutput(object):
          'total_inactive_branches': 1}
         """
         descriptions = {
-            "protected_branches": "Branches that are protected from direct commits",
-            "total_active_branches": "branches that have received commits within the initial collection time range",
-            "total_branches": "All branches of the project",
-            "total_inactive_branches": "branches that have not received commits within the initial collection time range",
+            "protected_branches_total": {
+                "desc": "Branches that are protected from direct commits",
+                "key": "protected_branches",
+            },
+            "active_branches_total": {
+                "desc": "branches that have received commits within the initial collection time range",
+                "key": "total_active_branches",
+            },
+            "branches_total": {
+                "desc": "All branches of the project",
+                "key": "total_branches",
+            },
+            "inactive_branches_total": {
+                "desc": "branches that have not received commits within the initial collection time range",
+                "key": "total_inactive_branches",
+            },
         }
         branches = stats_object.get("branches", {})
-        for key, description in descriptions.items():
-            if key not in branches:
+        for key, desc in descriptions.items():
+            if desc["key"] not in branches:
                 continue
-            value = branches[key]
+            value = branches[desc["key"]]
             stat = deepcopy(self.tmpobj)
-            stat["name"] = f"branches.{key}"
+            stat["name"] = key
             stat["value"] = value
-            stat["description"] = description
+            stat["description"] = desc["desc"]
             formatted_stats.append(stat)
         """
         Format workflow stats
@@ -207,20 +246,52 @@ class StatsOutput(object):
                                                         'window_runs_of_total_percentage': 25.0}}}}
         """
         workflow_descriptions = {
-            "retries": "Number of workflow retries during initial collection time range",
-            "run_cancelled_percentage": "Percentage of runs within collection time range that were cancelled",
-            "run_failure_percentage": "Percentage of runs within collection time range that failed",
-            "run_skipped_percentage": "Percentage of runs within collection time range that were skipped",
-            "run_success_percentage": "Percentage of runs within collection time range that succeeded",
-            "run_startup_failure_percentage": "Percentage of runs within collection time range that failed during startup",
-            "total_window_runs": "Total count of runs within collection time range",
-            "window_runs_of_total_percentage": "Percentage of total workflow runs that occurred during collection time range",
+            "retries_total": {
+                "desc": "Number of workflow retries during initial collection time range",
+                "key": "retries",
+                "type": "count",
+            },
+            "run_cancelled_percentage": {
+                "desc": "Percentage of runs within collection time range that were cancelled",
+                "key": "run_cancelled_percentage",
+                "type": "percent",
+            },
+            "run_failure_percentage": {
+                "desc": "Percentage of runs within collection time range that failed",
+                "key": "run_failure_percentage",
+                "type": "percent",
+            },
+            "run_skipped_percentage": {
+                "desc": "Percentage of runs within collection time range that were skipped",
+                "key": "run_skipped_percentage",
+                "type": "percent",
+            },
+            "run_success_percentage": {
+                "desc": "Percentage of runs within collection time range that succeeded",
+                "key": "run_success_percentage",
+                "type": "percent",
+            },
+            "run_startup_failure_percentage": {
+                "desc": "Percentage of runs within collection time range that failed during startup",
+                "key": "run_startup_failure_percentage",
+                "type": "percent",
+            },
+            "window_runs_total": {
+                "desc": "Total count of runs within collection time range",
+                "key": "total_window_runs",
+                "type": "count",
+            },
+            "window_runs_of_total_percentage": {
+                "desc": "Percentage of total workflow runs that occurred during collection time range",
+                "key": "window_runs_of_total_percentage",
+                "type": "percent",
+            },
         }
 
         workflows = stats_object.get("workflows", {})
         for k, v in workflows.get("events", {}).items():
             stat = deepcopy(self.tmpobj)
-            stat["name"] = "workflows.events"
+            stat["name"] = "workflows_events_total"
             stat["labels"]["event_type"] = k
             stat["value"] = v
             stat[
@@ -230,7 +301,7 @@ class StatsOutput(object):
         for k, v in workflows.get("workflows", {}).items():
             for rtype, val in v["runs"].items():
                 stat = deepcopy(self.tmpobj)
-                stat["name"] = "workflows.runs"
+                stat["name"] = "workflows_runs_total"
                 stat["labels"]["run_type"] = rtype
                 stat["labels"]["workflow"] = k
                 stat["value"] = val
@@ -240,12 +311,11 @@ class StatsOutput(object):
             formatted_stats.append(stat)
             for key, desc in workflow_descriptions.items():
                 stat = deepcopy(self.tmpobj)
-                stat["name"] = f"workflows.{key}"
+                stat["name"] = f"workflows_{key}"
                 stat["labels"]["workflow"] = k
-                stat["value"] = v[key]
+                stat["value"] = v[desc["key"]]
                 stat["description"] = desc
-                if "percentage" in key:
-                    stat["measurement_type"] = "percent"
+                stat["measurement_type"] = desc["type"]
                 formatted_stats.append(stat)
         """
         Format user/contributor stats
@@ -269,24 +339,42 @@ class StatsOutput(object):
                                          'security scans': {'success': 4}}},
         """
         user_descriptions = {
-            "total_branches": "all existing branches created by user",
-            "total_closed_pull_requests": "any closed pull requests",
-            "total_commits": "all commits by user",
-            "total_inactive_branches": "branches that haven't been used in time range",
-            "total_open_pull_requests": "PRs open in time range by user",
-            "total_pull_requests": "all created PRs by user",
+            "branches_total": {
+                "desc": "all existing branches created by user",
+                "key": "total_branches",
+            },
+            "closed_pull_requests_total": {
+                "desc": "any closed pull requests",
+                "key": "total_closed_pull_requests",
+            },
+            "commits_total": {
+                "desc": "all commits by user",
+                "key": "total_commits",
+            },
+            "inactive_branches_total": {
+                "desc": "branches that haven't been used in time range",
+                "key": "total_inactive_branches",
+            },
+            "open_pull_requests_total": {
+                "desc": "PRs open in time range by user",
+                "key": "total_open_pull_requests",
+            },
+            "pull_requests_total": {
+                "desc": "all created PRs by user",
+                "key": "total_pull_requests",
+            },
         }
         for user, data in stats_object.get("users", {}).items():
             for wkstat, desc in user_descriptions.items():
                 stat = deepcopy(self.tmpobj)
-                stat["name"] = f"users.{wkstat}"
+                stat["name"] = f"users_{wkstat}"
                 stat["labels"]["user"] = user
-                stat["value"] = data[wkstat]
-                stat["description"] = desc
+                stat["value"] = data[desc["key"]]
+                stat["description"] = desc["desc"]
                 formatted_stats.append(stat)
             for wktype, value in data["workflow_totals"].items():
                 stat = deepcopy(self.tmpobj)
-                stat["name"] = "users.workflow_total"
+                stat["name"] = "users_workflow_total"
                 stat["labels"]["user"] = user
                 stat["labels"]["run_type"] = wktype
                 stat["value"] = value
@@ -297,7 +385,7 @@ class StatsOutput(object):
             for workflow, wktypes in data["workflows"].items():
                 for wktype, value in wktypes.items():
                     stat = deepcopy(self.tmpobj)
-                    stat["name"] = "users.workflows"
+                    stat["name"] = "users_workflow_total"
                     stat["labels"]["workflow"] = workflow
                     stat["labels"]["user"] = user
                     stat["labels"]["run_type"] = wktype
@@ -318,22 +406,12 @@ class StatsOutput(object):
             stats_object["repo_stats"].get("code_frequency", {}).items()
         ):
             stat = deepcopy(self.tmpobj)
-            stat["name"] = "total_weekly_line_changes"
-            stat["labels"]["week"] = week
+            stat["name"] = "weekly_line_changes_total"
             stat["labels"]["type"] = "additions"
-            stat[
-                "description"
-            ] = "The total count of line changes made during the week (value may change as a week progresses)"
             stat["value"] = counts["additions"]
             formatted_stats.append(stat)
-            stat = deepcopy(self.tmpobj)
-            stat["name"] = "total_weekly_line_changes"
-            stat["labels"]["week"] = week
             stat["labels"]["type"] = "deletions"
             stat["value"] = counts["deletions"]
-            stat[
-                "description"
-            ] = "The total count of line changes made during the week (value may change as a week progresses)"
             formatted_stats.append(stat)
 
         """
@@ -350,7 +428,7 @@ class StatsOutput(object):
             stats_object["repo_stats"].get("commit_activity", {}).items()
         ):
             stat = deepcopy(self.tmpobj)
-            stat["name"] = "total_weekly_commits"
+            stat["name"] = "weekly_commits_total"
             stat["labels"]["week"] = week
             stat["value"] = details["total_commits"]
             stat[
@@ -359,7 +437,7 @@ class StatsOutput(object):
             formatted_stats.append(stat)
             for day, value in details["daily"].items():
                 stat = deepcopy(self.tmpobj)
-                stat["name"] = "total_daily_commits"
+                stat["name"] = "daily_commits_total"
                 stat["labels"]["week"] = week
                 stat["labels"]["day"] = day
                 stat["value"] = value
@@ -376,31 +454,25 @@ class StatsOutput(object):
         """
         for name, details in stats_object["repo_stats"].get("contributors", {}).items():
             stat = deepcopy(self.tmpobj)
-            stat["name"] = "total_contributor_commits"
+            stat["name"] = "contributor_commits_total"
             stat["labels"]["name"] = name
             stat["value"] = details["total_commits"]
             stat["description"] = "Total commits from a contributor"
             formatted_stats.append(stat)
             for week, wd in details["weeks"].items():
                 stat = deepcopy(self.tmpobj)
-                stat["name"] = "total_weekly_contributor_commits"
+                stat["name"] = "weekly_contributor_commits_total"
                 stat["labels"]["name"] = name
                 stat["labels"]["week"] = week
                 stat["description"] = "Weekly commits made by a contributor"
                 stat["value"] = wd["commits"]
                 formatted_stats.append(stat)
-                stat = deepcopy(self.tmpobj)
-                stat["name"] = "total_weekly_contributor_additions"
-                stat["labels"]["name"] = name
-                stat["labels"]["week"] = week
-                stat["description"] = "Weekly additions made by a contributor"
+                stat["name"] = "weekly_contributor_line_changes_total"
+                stat["labels"]["type"] = "additions"
+                stat["description"] = "Weekly line changes made by a contributor"
                 stat["value"] = wd["additions"]
                 formatted_stats.append(stat)
-                stat = deepcopy(self.tmpobj)
-                stat["name"] = "total_weekly_contributor_deletions"
-                stat["labels"]["name"] = name
-                stat["labels"]["week"] = week
-                stat["description"] = "Weekly deletions made by a contributor"
+                stat["labels"]["type"] = "deletions"
                 stat["value"] = wd["deletions"]
                 formatted_stats.append(stat)
 
