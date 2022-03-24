@@ -4,7 +4,6 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from datetime import datetime
 import logging
 import os
-import pprint
 import time
 import yaml
 from github_stats.github_api import GithubAccess
