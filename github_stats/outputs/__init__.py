@@ -553,7 +553,14 @@ class StatsOutput(object):
                                               ('Monday', 223),
                                               ('Sunday', 202)],
         """
-        # punch = stats_object["repo_stats"].get("punchcard", {})
+        punchcard = stats_object["repo_stats"].get("punchcard", {})
+        for dayslug, day in punchcard["days"].items():
+            stat = deepcopy(self.tmpobj)
+            stat["name"] = "daily_commits_total"
+            stat["description"] = "count of commits per day"
+            stat["labels"]["day"] = dayslug
+            stat["value"] = day["total_commits"]
+            formatted_stats.append(stat)
 
         return formatted_stats
 

@@ -289,6 +289,7 @@ class GithubAccess(object):
     def _set_collection_date(self, date):
         if not self.stats["collection_date"]:
             self.stats["collection_date"] = date
+            self.log.debug(f"Collection timestamp: {date}")
 
     def load_all_stats(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
         """
@@ -297,10 +298,10 @@ class GithubAccess(object):
         :returns: None
         """
         self._set_collection_date(base_date)
+        self.load_repo_stats(base_date, window)
         self.load_pull_requests(base_date, window)
         self.load_branches(base_date, window)
         self.load_releases(base_date, window)
-        self.load_repo_stats(base_date, window)
         self.load_workflow_runs(base_date, window)
 
     def load_pull_requests(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
@@ -313,7 +314,6 @@ class GithubAccess(object):
         :returns: None
         """
         self._set_collection_date(base_date)
-        self.log.info(f"Collection timestamp: {base_date.timestamp()}")
         td = base_date - timedelta(days=window)
         starttime = time.time()
         self.log.info("Loading Pull Request Data...")
@@ -447,9 +447,13 @@ class GithubAccess(object):
             1. get the isoweekday value: (0-6) of base_date
               * This is essentially a count of the number of days since Sunday
             2. turn that into a timedelta object and subtract it from base_date
+            3. Make sure we make the date the beginning of the day on Sunday, rather than some time during the day
+               to avoid gaps in collection
         """
-        sunday = base_date - timedelta(days=base_date.isoweekday())
-
+        sunday = (base_date - timedelta(days=base_date.isoweekday())).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        self.log.debug(f"Most recent Sunday is {sunday}")
         """
         Code frequency:
         [
@@ -475,7 +479,7 @@ class GithubAccess(object):
                 self.log.debug(f"{ts_date} outside defined window, skipping")
                 continue
             self.log.debug(
-                f"Wekk {ts_date}, Additions: {additions}, Deletions: {deletions}"
+                f"Week {ts_date}, Additions: {additions}, Deletions: {deletions}"
             )
             self.stats["repo_stats"]["code_frequency"][str(ts_date)] = {
                 "additions": additions,
