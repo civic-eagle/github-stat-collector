@@ -556,10 +556,16 @@ class StatsOutput(object):
         punchcard = stats_object["repo_stats"].get("punchcard", {})
         for dayslug, day in punchcard["days"].items():
             stat = deepcopy(self.tmpobj)
-            stat["name"] = "daily_commits_total"
-            stat["description"] = "count of commits per day"
+            stat["name"] = "punchcard_daily_commits_total"
+            stat["description"] = "punchcard count of commits per day"
             stat["labels"]["day"] = dayslug
             stat["value"] = day["total_commits"]
+            formatted_stats.append(stat)
+            stat = deepcopy(self.tmpobj)
+            stat["name"] = "punchcard_daily_busiest_hour"
+            stat["description"] = "the hour (per day) with the most commits"
+            stat["labels"]["day"] = dayslug
+            stat["value"] = day["busiest_hour"]
             formatted_stats.append(stat)
 
         return formatted_stats
