@@ -450,7 +450,11 @@ class GithubAccess(object):
             3. Make sure we make the date the beginning of the day on Sunday, rather than some time during the day
                to avoid gaps in collection
         """
-        sunday = (base_date - timedelta(days=base_date.isoweekday())).replace(
+        isoday = base_date.isoweekday()
+        if isoday < 2:
+            # add a week early in the week to avoid missing stats
+            isoday += 7
+        sunday = (base_date - timedelta(days=isoday)).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         self.log.debug(f"Most recent Sunday is {sunday}")
@@ -545,7 +549,7 @@ class GithubAccess(object):
             for week in contributor["weeks"]:
                 ts_date = datetime.utcfromtimestamp(week["w"])
                 if ts_date > base_date or ts_date < sunday:
-                    self.log.debug(f"{ts_date} outside defined window, skipping")
+                    self.log.debug(f"{ts_date} outside defined window ({sunday} - {base_date}), skipping")
                     continue
                 if week["c"] < 1:
                     self.log.debug(f"{user} had no commits in {ts_date}")
