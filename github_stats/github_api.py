@@ -549,7 +549,9 @@ class GithubAccess(object):
             for week in contributor["weeks"]:
                 ts_date = datetime.utcfromtimestamp(week["w"])
                 if ts_date > base_date or ts_date < sunday:
-                    self.log.debug(f"{ts_date} outside defined window ({sunday} - {base_date}), skipping")
+                    self.log.debug(
+                        f"{ts_date} outside defined window ({sunday} - {base_date}), skipping"
+                    )
                     continue
                 if week["c"] < 1:
                     self.log.debug(f"{user} had no commits in {ts_date}")
