@@ -113,54 +113,56 @@ class GoogleOutput(StatsOutput):
         contrib_changes = self.output_stats.pop(
             "weekly_contributor_line_changes_total", {}
         )
-        self.output_stats["weekly_contributor_line_changes_total"] = {
-            "description": contrib_changes["description"],
-            "keys": [t for t in contrib_changes["keys"] if t not in filtered_keys],
-            "measurement_type": contrib_changes["measurement_type"],
-            "stats": [],
-        }
-        users = dict()
-        for stat in contrib_changes["stats"]:
-            name = stat["labels"]["name"]
-            if name not in users:
-                users[name] = {
-                    "description": stat["description"],
-                    "labels": {
-                        k: v
-                        for k, v in stat["labels"].items()
-                        if k not in filtered_keys
-                    },
-                    "measurement_type": stat["measurement_type"],
-                    "name": stat["name"],
-                    "value": stat["value"],
-                }
-            else:
-                users[name]["value"] += stat["value"]
-        self.output_stats["weekly_contributor_line_changes_total"]["stats"] = [
-            v for v in users.values()
-        ]
+        if contrib_changes:
+            self.output_stats["weekly_contributor_line_changes_total"] = {
+                "description": contrib_changes["description"],
+                "keys": [t for t in contrib_changes["keys"] if t not in filtered_keys],
+                "measurement_type": contrib_changes["measurement_type"],
+                "stats": [],
+            }
+            users = dict()
+            for stat in contrib_changes["stats"]:
+                name = stat["labels"]["name"]
+                if name not in users:
+                    users[name] = {
+                        "description": stat["description"],
+                        "labels": {
+                            k: v
+                            for k, v in stat["labels"].items()
+                            if k not in filtered_keys
+                        },
+                        "measurement_type": stat["measurement_type"],
+                        "name": stat["name"],
+                        "value": stat["value"],
+                    }
+                else:
+                    users[name]["value"] += stat["value"]
+            self.output_stats["weekly_contributor_line_changes_total"]["stats"] = [
+                v for v in users.values()
+            ]
 
         total_changes = self.output_stats.pop("weekly_line_changes_total", {})
-        self.output_stats["weekly_line_changes_total"] = {
-            "description": total_changes["description"],
-            "keys": [t for t in total_changes["keys"] if t not in filtered_keys],
-            "measurement_type": total_changes["measurement_type"],
-            "stats": [],
-        }
-        tc = {
-            "description": total_changes["description"],
-            "labels": {},
-            "measurement_type": total_changes["measurement_type"],
-            "name": "",
-            "value": 0,
-        }
-        for stat in total_changes["stats"]:
-            tc["value"] += stat["value"]
-            tc["labels"] = {
-                k: v for k, v in stat["labels"].items() if k not in filtered_keys
+        if total_changes:
+            self.output_stats["weekly_line_changes_total"] = {
+                "description": total_changes["description"],
+                "keys": [t for t in total_changes["keys"] if t not in filtered_keys],
+                "measurement_type": total_changes["measurement_type"],
+                "stats": [],
             }
-            tc["name"] = stat["name"]
-        self.output_stats["weekly_line_changes_total"]["stats"] = [tc]
+            tc = {
+                "description": total_changes["description"],
+                "labels": {},
+                "measurement_type": total_changes["measurement_type"],
+                "name": "",
+                "value": 0,
+            }
+            for stat in total_changes["stats"]:
+                tc["value"] += stat["value"]
+                tc["labels"] = {
+                    k: v for k, v in stat["labels"].items() if k not in filtered_keys
+                }
+                tc["name"] = stat["name"]
+            self.output_stats["weekly_line_changes_total"]["stats"] = [tc]
 
     def write_stats(self):
         """
