@@ -1,3 +1,5 @@
+[![CI](https://github.com/civic-eagle/github-stat-collector/actions/workflows/ci.yaml/badge.svg)](https://github.com/civic-eagle/github-stat-collector/actions/workflows/ci.yaml)
+
 # Installing
 
 This tool relies on `poetry` for dependency management. If you already have `poetry` installed on your system, simply `poetry update` to pull in all needed dependencies.
