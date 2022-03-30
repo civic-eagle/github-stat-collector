@@ -40,7 +40,8 @@ jobs:
           while IFS= read -r -d '' filename; do
           echo "processing ${filename}"
           docker run --rm -v "$(pwd):/mnt" koalaman/shellcheck:latest -x "${filename}"
-          done < <(find . -type f -name "*.sh" ! -path "*/node_modules/*" ! -path "*/.git/*" -print0)
+          done < <(find . -type f -name "*.sh" ! -path "*/.git/*" -print0)
+
   build:
     name: build container
     runs-on: self-hosted
@@ -52,5 +53,5 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          tags: "us-docker.pkg.dev/civic-eagle-enview-dev/github-stat-collector:$(date +%s)"
+          tags: us-central1-docker.pkg.dev/civic-eagle-enview-dev/github-stat-collector/github-stat-collector:latest,us-central1-docker.pkg.dev/civic-eagle-enview-dev/github-stat-collector/github-stat-collector:$(date +%s)
           push: true
