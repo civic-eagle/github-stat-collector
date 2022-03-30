@@ -38,6 +38,7 @@ class GoogleOutput(StatsOutput):
                 project_id=google_config["project_id"],
                 # strip the 'opencensus_task' label
                 default_monitoring_labels={},
+                resource="global",
             ),
             interval=self.export_rate,
         )
