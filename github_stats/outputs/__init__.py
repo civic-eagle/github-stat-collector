@@ -17,6 +17,7 @@ class StatsOutput(object):
             self.tmpobj["timestamp"] = timestamp
         self.main_branch = config["repo"]["branches"].get("main", "main")
         self.release_branch = config["repo"]["branches"].get("release", "main")
+        self.float_measurements = ["percent", "gauge"]
 
     def format_stats(self, stats_object):
         """
@@ -88,6 +89,7 @@ class StatsOutput(object):
 
         example:
          'pull_requests': {
+             'avg_pr_time_open_secs': 236275.55798969071,
              'closed_pull_requests': ['pull1', 'pull2'],
              'labels': {'label2': {'pulls': ['pull2'],
                                    'total_old_prs': 0,
@@ -102,12 +104,23 @@ class StatsOutput(object):
              'total_closed_pull_requests': 1510,
              'total_draft_pull_requests': 9,
              'total_inactive_pull_requests': 1436,
+             'total_merged_pull_requests': 2866,
              'total_open_pull_requests': 7,
+             'total_pr_time_open_secs': 366699666.0,
              'total_pull_requests': 1517},
          },
         """
         pulls = stats_object.get("pull_requests", {})
         pull_desc = {
+            "merged_pull_requests_total": {
+                "key": "total_merged_pull_requests",
+                "desc": "All PRs merged into the code base",
+            },
+            "avg_pr_time_open_secs": {
+                "desc": "Avg. # of seconds a PR was open",
+                "key": "avg_pr_time_open_secs",
+                "type": "gauge",
+            },
             "active_pull_requests_total": {
                 "desc": "PRs updated within the initial collection time range",
                 "key": "total_active_pull_requests",
@@ -330,6 +343,8 @@ class StatsOutput(object):
                                   'inactive_branches': [],
                                   'name': '',
                                   'open_pull_requests': [],
+                                  'total_merged_pull_requests': 5,
+                                  'avg_pr_time_open_secs': 6000,
                                   'total_branches': 0,
                                   'total_closed_pull_requests': 2,
                                   'total_commits': 0,
@@ -356,6 +371,15 @@ class StatsOutput(object):
             "inactive_branches_total": {
                 "desc": "branches that haven't been used in time range",
                 "key": "total_inactive_branches",
+            },
+            "avg_user_pr_time_open_secs": {
+                "desc": "Avg. # of seconds a PR is open",
+                "key": "avg_pr_time_open_secs",
+                "type": "gauge",
+            },
+            "merged_pull_requests_total": {
+                "desc": "PRs merged into the code base",
+                "key": "total_merged_pull_requests",
             },
             "open_pull_requests_total": {
                 "desc": "PRs open in time range by user",

@@ -42,7 +42,6 @@ class GoogleOutput(StatsOutput):
             interval=self.export_rate,
         )
         self.view_manager.register_exporter(self.exporter)
-        self.float_measurements = ["percent"]
         self.output_stats = dict()
         self.output_stat_count = 0
 
