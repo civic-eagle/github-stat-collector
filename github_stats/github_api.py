@@ -20,7 +20,7 @@ import time
 import urllib.parse
 
 calendar.setfirstweekday(calendar.SUNDAY)
-DEFAULT_WINDOW = 7
+DEFAULT_WINDOW = 1
 
 
 class GithubAccess(object):
@@ -81,10 +81,14 @@ class GithubAccess(object):
         self.user_schema = {
             "inactive_branches": list(),
             "total_inactive_branches": 0,
+            "avg_pr_time_open_secs": 0,
+            "total_pr_time_open_secs": 0,
             "total_pull_requests": 0,
+            "total_merged_pull_requests": 0,
             "total_open_pull_requests": 0,
             "open_pull_requests": [],
             "closed_pull_requests": [],
+            "merged_pull_requests": [],
             "total_closed_pull_requests": 0,
             "total_commits": 0,
             "events": dict(),
@@ -132,12 +136,16 @@ class GithubAccess(object):
             "workflows": {"events": dict(), "workflows": dict()},
             "pull_requests": {
                 "total_pull_requests": 0,
+                "total_merged_pull_requests": 0,
+                "total_pr_time_open_secs": 0,
+                "avg_pr_time_open_secs": 0,
                 "total_open_pull_requests": 0,
                 "total_closed_pull_requests": 0,
                 "total_active_pull_requests": 0,
                 "total_inactive_pull_requests": 0,
                 "total_draft_pull_requests": 0,
                 "open_pull_requests": list(),
+                "merged_pull_requests": list(),
                 "closed_pull_requests": list(),
                 "labels": {
                     label: {
@@ -334,6 +342,25 @@ class GithubAccess(object):
                 self._process_labels(pull["title"], pull["labels"], "total_recent_prs")
             author = self._cache_user_login(pull["user"]["login"])
             self.stats["users"][author]["total_pull_requests"] += 1
+
+            """
+            Calculate avg PR time
+            """
+            created = datetime.strptime(pull["created_at"], "%Y-%m-%dT%H:%M:%SZ")
+            merged = pull.get("merged_at", None)
+            if not merged:
+                closed = pull.get("closed_at", None)
+            else:
+                self.stats["pull_requests"]["total_merged_pull_requests"] += 1
+            if merged or closed:
+                if merged:
+                    endtime = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ")
+                else:
+                    endtime = datetime.strptime(closed, "%Y-%m-%dT%H:%M:%SZ")
+                timeopen = (endtime - created).total_seconds()
+                self.stats["pull_requests"]["total_pr_time_open_secs"] += timeopen
+                self.stats["users"][author]["total_pr_time_open_secs"] += timeopen
+
             """
             We'll be explicit about state here to avoid
             changed state values affecting this later
@@ -343,7 +370,7 @@ class GithubAccess(object):
                 self.stats["users"][author]["total_open_pull_requests"] += 1
                 self.stats["users"][author]["open_pull_requests"].append(pull["title"])
                 self.stats["pull_requests"]["open_pull_requests"].append(pull["title"])
-            elif pull["state"] == "closed":
+            elif not merged and pull["state"] == "closed":
                 self.stats["pull_requests"]["total_closed_pull_requests"] += 1
                 self.stats["users"][author]["total_closed_pull_requests"] += 1
                 self.stats["users"][author]["closed_pull_requests"].append(
@@ -352,6 +379,30 @@ class GithubAccess(object):
                 self.stats["pull_requests"]["closed_pull_requests"].append(
                     pull["title"]
                 )
+            elif pull["state"] == "closed":
+                self.stats["pull_requests"]["total_merged_pull_requests"] += 1
+                self.stats["users"][author]["total_merged_pull_requests"] += 1
+                self.stats["users"][author]["merged_pull_requests"].append(
+                    pull["title"]
+                )
+                self.stats["pull_requests"]["merged_pull_requests"].append(
+                    pull["title"]
+                )
+        """
+        Generate average PR time after collecting all stats
+        to get better numbers
+        """
+        if self.stats["pull_requests"]["total_pull_requests"] > 0:
+            self.stats["pull_requests"]["avg_pr_time_open_secs"] = (
+                self.stats["pull_requests"]["total_pr_time_open_secs"]
+                / self.stats["pull_requests"]["total_pull_requests"]
+            )
+        for user, data in self.stats["users"].items():
+            if data["total_pull_requests"] > 0:
+                self.stats["users"][user]["avg_pr_time_open_secs"] = (
+                    data["total_pr_time_open_secs"] / data["total_pull_requests"]
+                )
+
         self.log.info(f"Loaded pull requests in {time.time() - starttime} seconds")
 
     def load_branches(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
