@@ -9,7 +9,7 @@ RUN apt-get update -qq \
 WORKDIR /app
 COPY pyproject.toml .
 COPY poetry.lock .
-RUN poetry install -q \
+RUN poetry install -q --no-dev \
   && rm -r /root/.cache/pypoetry/cache /root/.cache/pypoetry/artifacts/
 
 COPY github_stats/ github_stats/
