@@ -14,6 +14,6 @@ RUN poetry install -q \
 
 COPY github_stats/ github_stats/
 COPY collect-stats.py .
-COPY config.yml .
+# COPY config.yml .
 
 CMD ["poetry", "run", "python", "/app/collect-stats.py"]
