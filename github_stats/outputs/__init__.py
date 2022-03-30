@@ -374,10 +374,6 @@ class StatsOutput(object):
                 "desc": "all existing branches created by user",
                 "key": "total_branches",
             },
-            "branches_total": {
-                "desc": "all existing branches created by user",
-                "key": "total_branches",
-            },
             "closed_pull_requests_total": {
                 "desc": "any closed pull requests",
                 "key": "total_closed_pull_requests",
