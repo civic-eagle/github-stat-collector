@@ -50,7 +50,8 @@ class StatsOutput(object):
          'releases': {'releases': {'v0.1.0': {'author': '',
                                               'body': '',
                                               'created_at': '2022-03-07 19:59:11'}},
-                      'total_releases': 1},
+                      'total_releases': 1,
+                      'total_recent_releases': 1},
         """
         commits = stats_object.get("commits", {})
         stat = deepcopy(self.tmpobj)
@@ -80,9 +81,12 @@ class StatsOutput(object):
         stat = deepcopy(self.tmpobj)
         stat["name"] = "releases_total"
         stat["value"] = releases["total_releases"]
-        stat[
-            "description"
-        ] = "All releases detected within the initial collection time range"
+        stat["description"] = "All releases"
+        formatted_stats.append(stat)
+        stat = deepcopy(self.tmpobj)
+        stat["name"] = "recent_releases_total"
+        stat["value"] = releases["total_recent_releases"]
+        stat["description"] = "All releases detected within the collection time range"
         formatted_stats.append(stat)
         """
         Pull requests
@@ -348,6 +352,8 @@ class StatsOutput(object):
                                   'total_branches': 0,
                                   'total_closed_pull_requests': 2,
                                   'total_commits': 0,
+                                  'total_releases': 0,
+                                  'total_recent_releases': 0,
                                   'total_inactive_branches': 0,
                                   'total_open_pull_requests': 0,
                                   'total_pull_requests': 2,
@@ -356,6 +362,18 @@ class StatsOutput(object):
                                          'security scans': {'success': 4}}},
         """
         user_descriptions = {
+            "recent_releases_total": {
+                "desc": "all recent releases by a user",
+                "key": "total_recent_releases",
+            },
+            "releases_total": {
+                "desc": "All releases by a user",
+                "key": "total_releases",
+            },
+            "branches_total": {
+                "desc": "all existing branches created by user",
+                "key": "total_branches",
+            },
             "branches_total": {
                 "desc": "all existing branches created by user",
                 "key": "total_branches",

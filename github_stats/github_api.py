@@ -81,6 +81,8 @@ class GithubAccess(object):
         self.user_schema = {
             "inactive_branches": list(),
             "total_inactive_branches": 0,
+            "total_releases": 0,
+            "total_recent_releases": 0,
             "avg_pr_time_open_secs": 0,
             "total_pr_time_open_secs": 0,
             "total_pull_requests": 0,
@@ -160,6 +162,7 @@ class GithubAccess(object):
             "users": dict(),
             "releases": {
                 "total_releases": 0,
+                "total_recent_releases": 0,
                 "releases": dict(),
             },
             "commits": {"branch_commits": dict(), "total_commits": 0},
@@ -695,16 +698,18 @@ class GithubAccess(object):
         url = f"/repos/{self.repo_name}/releases"
         for release in self._github_query(url):
             name = release["name"]
+            user = self._cache_user_login(release["author"]["login"])
             dt_created = datetime.strptime(release["created_at"], "%Y-%m-%dT%H:%M:%SZ")
-            if dt_created.date() > base_date.date() or dt_created.date() < td.date():
-                self.log.debug(f"{name} outside window, skipping")
-                continue
+            if dt_created.date() <= base_date.date() and dt_created.date() >= td.date():
+                self.stats["releases"]["total_recent_releases"] += 1
+                self.stats["users"][user]["total_recent_releases"] += 1
             self.stats["releases"]["total_releases"] += 1
             self.stats["releases"]["releases"][name] = {
                 "created_at": str(dt_created),
-                "author": self._cache_user_login(release["author"]["login"]),
+                "author": user,
                 "body": release["body"],
             }
+            self.stats["users"][user]["total_releases"] += 1
         self.log.info(f"Loaded release details in {time.time() - starttime} seconds")
 
     def load_code_scanning(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
