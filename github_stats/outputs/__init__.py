@@ -610,7 +610,7 @@ class StatsOutput(object):
             formatted_stats.append(stat)
             stat = deepcopy(self.tmpobj)
             stat["name"] = "punchcard_daily_busiest_hour"
-            stat["description"] = "the hour (per day) with the most commits"
+            stat["description"] = "the UTC-based hour (per day) with the most commits"
             stat["labels"]["day"] = dayslug
             stat["value"] = day["busiest_hour"]
             formatted_stats.append(stat)

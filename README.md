@@ -28,10 +28,12 @@ Every individual series generated with this tool will produce a JSON-compatible 
     "user": "<>"
   },
   "measurement_type": "count",
-  "name": "users.total_pull_requests",
+  "name": "users_total_pull_requests",
   "value": 0
 }
 ```
+
+These produced metrics are analogous to a JSON representation of a prometheus stat (which matches with the OpenMetrics standard we mention above).
 
 ## Individual object keys and their usage
 
@@ -50,4 +52,4 @@ Every individual series generated with this tool will produce a JSON-compatible 
 
 To lay this out simply: A metric is comprised of many series. A series is a single example of a metric with all associated labels/tags expanded.
 
-So in our example above, the *metric* is `users.total_pull_requests` while the _series_ is the entire JSON object. Many SaaS systems will charge per _series_ created, not simply per metric, so be mindful of this distinction when storing this data.
+So in our example above, the *metric* is `users_total_pull_requests` while the _series_ is the entire JSON object. Many SaaS systems will charge per _series_ created, not simply per metric, so be mindful of this distinction when storing this data.
