@@ -18,19 +18,19 @@ class InfluxOutput(StatsOutput):
             raise Exception("Can't load influx config section")
         self.log = logging.getLogger("github-stats.output.influx")
 
-        token = os.environ.get("INFLUX_TOKEN", None)
+        meta = {"url": influx_config["endpoint"]}
+        token = os.environ.get("INFLUX_TOKEN", "")
         if not token:
-            token = influx_config.get("auth_token", None)
-        if not token:
-            raise Exception("Cannot find Influx auth token in environment or config")
+            token = influx_config.get("auth_token", "")
+        meta["token"] = token
         self.bucket = influx_config.get("bucket", "")
         self.org = influx_config.get("org", "")
+        if self.bucket:
+            meta["bucket"] = self.bucket
+        if self.org:
+            meta["org"] = self.org
 
-        self.client = InfluxDBClient(
-            url=influx_config["endpoint"],
-            token=token,
-            org=self.org,
-        )
+        self.client = InfluxDBClient(**meta)
         self.write_api = self.client.write_api(write_options=SYNCHRONOUS)
         self.output_stats = list()
         self.output_stat_count = 0
@@ -43,15 +43,20 @@ class InfluxOutput(StatsOutput):
         produces...
         Since all stat names have at least two 'field's if we break them up
         by '_' (thanks, prometheus standard!), this is relatively simple.
-        1. "measurement" gets everything up to the last field
+        1. "measurement" gets everything up to the last field of 'name'
         2. "fields" gets the last 'field' of 'name'
         """
         self.output_stats = [
             {
                 "measurement": "_".join(stat["name"].split("_")[:-1]),
                 "tags": stat["labels"],
-                # object passes around as a datetime.datetime
-                "time": stat["timestamp"].timestamp(),
+                """
+                object passes around as a datetime.datetime, so
+                just saying ".timestamp()" returns a timestamp,
+                but influx format expects at least milliseconds, so
+                we multiply by 1000
+                """
+                "time": stat["timestamp"].timestamp() * 1000,
                 "fields": {stat["name"].split("_")[-1]: stat["value"]},
             }
             for stat in super().format_stats(stats_object)
