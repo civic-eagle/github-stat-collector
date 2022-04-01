@@ -63,11 +63,11 @@ def main():
     gh.load_all_stats(timestamp, args.window)
     influx.format_stats(gh.stats)
     logger.info(f"{pprint.pformat(influx.output_stats)}")
-    # goog.format_stats(gh.stats)
-    # goog.write_stats()
+    influx.format_stats(gh.stats)
+    influx.write_stats()
 
     logger.info(
-        f"Loaded, formatted, and sent {goog.output_stat_count} stats in {time.time() - starttime} seconds"
+        f"Loaded, formatted, and sent {influx.output_stat_count} stats in {time.time() - starttime} seconds"
     )
 
 
