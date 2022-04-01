@@ -48,6 +48,14 @@ python-versions = ">=3.5.0"
 unicode_backport = ["unicodedata2"]
 
 [[package]]
+name = "ciso8601"
+version = "2.2.0"
+description = "Fast ISO8601 date time parser for Python written in C"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "click"
 version = "8.1.0"
 description = "Composable command line interface toolkit"
@@ -201,6 +209,28 @@ optional = false
 python-versions = ">=3.5"
 
 [[package]]
+name = "influxdb-client"
+version = "1.27.0"
+description = "InfluxDB 2.0 Python client library"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+certifi = ">=14.05.14"
+ciso8601 = {version = ">=2.1.1", optional = true, markers = "extra == \"ciso\""}
+python-dateutil = ">=2.5.3"
+pytz = ">=2019.1"
+rx = ">=3.0.1"
+six = ">=1.10"
+urllib3 = ">=1.26.0"
+
+[package.extras]
+ciso = ["ciso8601 (>=2.1.1)"]
+extra = ["pandas (>=0.25.3)", "numpy"]
+test = ["coverage (>=4.0.3)", "nose (>=1.3.7)", "pluggy (>=0.3.1)", "py (>=1.4.31)", "randomize (>=0.13)", "pytest (>=5.0.0)", "httpretty (==1.0.5)", "psutil (>=5.6.3)"]
+
+[[package]]
 name = "mccabe"
 version = "0.6.1"
 description = "McCabe checker, plugin for flake8"
@@ -349,6 +379,17 @@ python-versions = ">=3.6"
 diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
+name = "python-dateutil"
+version = "2.8.2"
+description = "Extensions to the standard Python datetime module"
+category = "main"
+optional = false
+python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
+
+[package.dependencies]
+six = ">=1.5"
+
+[[package]]
 name = "pytz"
 version = "2022.1"
 description = "World timezone definitions, modern and historical"
@@ -402,6 +443,14 @@ python-versions = ">=3.6,<4"
 pyasn1 = ">=0.1.3"
 
 [[package]]
+name = "rx"
+version = "3.2.0"
+description = "Reactive Extensions (Rx) for Python"
+category = "main"
+optional = false
+python-versions = ">=3.6.0"
+
+[[package]]
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -441,7 +490,7 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "69641b5c2e94d2affe5d5bc36362a08fde6ef832c4e09e85ca65d191e6cc7e64"
+content-hash = "6a1753dd4a81896ada42aaa8b8bc6efc5b0e68c8d3fd0e8201b361c96d727b07"
 
 [metadata.files]
 black = [
@@ -480,6 +529,9 @@ certifi = [
 charset-normalizer = [
     {file = "charset-normalizer-2.0.12.tar.gz", hash = "sha256:2857e29ff0d34db842cd7ca3230549d1a697f96ee6d3fb071cfa6c7393832597"},
     {file = "charset_normalizer-2.0.12-py3-none-any.whl", hash = "sha256:6881edbebdb17b39b4eaaa821b438bf6eddffb4468cf344f09f89def34a8b1df"},
+]
+ciso8601 = [
+    {file = "ciso8601-2.2.0.tar.gz", hash = "sha256:14ad817ed31a698372d42afa81b0173d71cd1d0b48b7499a2da2a01dcc8695e6"},
 ]
 click = [
     {file = "click-8.1.0-py3-none-any.whl", hash = "sha256:19a4baa64da924c5e0cd889aba8e947f280309f1a2ce0947a3e3a7bcb7cc72d6"},
@@ -576,6 +628,10 @@ grpcio = [
 idna = [
     {file = "idna-3.3-py3-none-any.whl", hash = "sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff"},
     {file = "idna-3.3.tar.gz", hash = "sha256:9d643ff0a55b762d5cdb124b8eaa99c66322e2157b69160bc32796e824360e6d"},
+]
+influxdb-client = [
+    {file = "influxdb_client-1.27.0-py3-none-any.whl", hash = "sha256:27335723011610bb2104083475da616928771ebad92cca624884f5fa22249c94"},
+    {file = "influxdb_client-1.27.0.tar.gz", hash = "sha256:ac3ff734a83dc542944de15c81001a5a410ae4ae4b2722efefc1bf722c960975"},
 ]
 mccabe = [
     {file = "mccabe-0.6.1-py2.py3-none-any.whl", hash = "sha256:ab8a6258860da4b6677da4bd2fe5dc2c659cff31b3ee4f7f5d64e79735b80d42"},
@@ -682,6 +738,10 @@ pyflakes = [
 pyparsing = [
     {file = "pyparsing-3.0.7-py3-none-any.whl", hash = "sha256:a6c06a88f252e6c322f65faf8f418b16213b51bdfaece0524c1c1bc30c63c484"},
     {file = "pyparsing-3.0.7.tar.gz", hash = "sha256:18ee9022775d270c55187733956460083db60b37d0d0fb357445f3094eed3eea"},
+]
+python-dateutil = [
+    {file = "python-dateutil-2.8.2.tar.gz", hash = "sha256:0123cacc1627ae19ddf3c27a5de5bd67ee4586fbdd6440d9748f8abb483d3e86"},
+    {file = "python_dateutil-2.8.2-py2.py3-none-any.whl", hash = "sha256:961d03dc3453ebbc59dbdea9e4e11c5651520a876d0f4db161e8674aae935da9"},
 ]
 pytz = [
     {file = "pytz-2022.1-py2.py3-none-any.whl", hash = "sha256:e68985985296d9a66a881eb3193b0906246245294a881e7c8afe623866ac6a5c"},
@@ -805,6 +865,10 @@ requests = [
 rsa = [
     {file = "rsa-4.8-py3-none-any.whl", hash = "sha256:95c5d300c4e879ee69708c428ba566c59478fd653cc3a22243eeb8ed846950bb"},
     {file = "rsa-4.8.tar.gz", hash = "sha256:5c6bd9dc7a543b7fe4304a631f8a8a3b674e2bbfc49c2ae96200cdbe55df6b17"},
+]
+rx = [
+    {file = "Rx-3.2.0-py3-none-any.whl", hash = "sha256:922c5f4edb3aa1beaa47bf61d65d5380011ff6adcd527f26377d05cb73ed8ec8"},
+    {file = "Rx-3.2.0.tar.gz", hash = "sha256:b657ca2b45aa485da2f7dcfd09fac2e554f7ac51ff3c2f8f2ff962ecd963d91c"},
 ]
 six = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},

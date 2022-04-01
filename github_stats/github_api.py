@@ -30,10 +30,8 @@ class GithubAccess(object):
         auth_token = os.environ.get("GITHUB_TOKEN", None)
         if not auth_token:
             auth_token = config.get("auth", {}).get("github_token", None)
-            if not auth_token:
-                raise Exception(
-                    "Cannot find Github auth token in environment or config"
-                )
+        if not auth_token:
+            raise Exception("Cannot find Github auth token in environment or config")
 
         headers = {
             "Accept": "application/vnd.github.v3+json",

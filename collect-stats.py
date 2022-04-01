@@ -4,10 +4,13 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from datetime import datetime
 import logging
 import os
+import pprint
 import time
 import yaml
+
+# local imports
 from github_stats.github_api import GithubAccess
-from github_stats.outputs.google import GoogleOutput
+from github_stats.outputs.influx import InfluxOutput
 
 SCRIPTDIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -55,11 +58,13 @@ def main():
     config = yaml.safe_load(open(args.config, "r", encoding="utf-8").read())
     timestamp = datetime.fromtimestamp(args.timestamp)
     starttime = time.time()
-    goog = GoogleOutput(config)
     gh = GithubAccess(config)
+    influx = InfluxOutput(config, timestamp)
     gh.load_all_stats(timestamp, args.window)
-    goog.format_stats(gh.stats)
-    goog.write_stats()
+    influx.format_stats(gh.stats)
+    logger.info(f"{pprint.pformat(influx.output_stats)}")
+    # goog.format_stats(gh.stats)
+    # goog.write_stats()
 
     logger.info(
         f"Loaded, formatted, and sent {goog.output_stat_count} stats in {time.time() - starttime} seconds"

@@ -37,6 +37,13 @@ class StatsOutput(object):
         re-formatted from the initial collection. Sectioning just helps
         us find groups easier
 
+        basic format for returned stats:
+             {'description': 'punchcard count of commits per day',
+              'labels': {'day': 'Sunday', 'repository_name': 'repo1'},
+              'measurement_type': 'count',
+              'name': 'punchcard_daily_commits_total',
+              'value': 202},
+
         :returns: list of stats ready to ship
         :rtype: list
         """
@@ -457,7 +464,8 @@ class StatsOutput(object):
             stat["labels"]["type"] = "deletions"
             stat["labels"]["week"] = week
             stat["description"] = "count of line changes during a week"
-            stat["value"] = counts["deletions"]
+            # ensure deletion count is positive (so we can do math on it better)
+            stat["value"] = abs(counts["deletions"])
             formatted_stats.append(stat)
 
         """
@@ -527,7 +535,8 @@ class StatsOutput(object):
                 stat["labels"]["week"] = week
                 stat["labels"]["type"] = "deletions"
                 stat["description"] = "Weekly line changes made by a contributor"
-                stat["value"] = wd["deletions"]
+                # ensure deletion count is positive (so we can do math on it better)
+                stat["value"] = abs(wd["deletions"])
                 formatted_stats.append(stat)
 
         """
