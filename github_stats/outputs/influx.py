@@ -65,7 +65,8 @@ class InfluxOutput(StatsOutput):
             f"Attempting to write {self.output_stat_count} metrics to Influx..."
         )
         self.write_api.write(
-            self.bucket, self.org,
+            self.bucket,
+            self.org,
             self.output_stats,
             write_precision=WritePrecision.S,
         )
