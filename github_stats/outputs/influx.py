@@ -3,6 +3,7 @@ This output leverages the InfluxDB line protocol to write to a defined output
 """
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import SYNCHRONOUS
+from influxdb_client.domain.write_precision import WritePrecision
 import logging
 import os
 
@@ -29,7 +30,7 @@ class InfluxOutput(StatsOutput):
             meta["bucket"] = self.bucket
         if self.org:
             meta["org"] = self.org
-
+        self.prefix = influx_config.get("metric_prefix", "")
         self.client = InfluxDBClient(**meta)
         self.write_api = self.client.write_api(write_options=SYNCHRONOUS)
         self.output_stats = list()
@@ -48,26 +49,25 @@ class InfluxOutput(StatsOutput):
         """
         self.output_stats = [
             {
-                "measurement": "_".join(stat["name"].split("_")[:-1]),
+                "measurement": "_".join([self.prefix] + stat["name"].split("_")[:-1]),
                 "tags": stat["labels"],
-                """
-                object passes around as a datetime.datetime, so
-                just saying ".timestamp()" returns a timestamp,
-                but influx format expects at least milliseconds, so
-                we multiply by 1000
-                """
-                "time": stat["timestamp"].timestamp() * 1000,
+                "time": int(stat["timestamp"].timestamp()),
                 "fields": {stat["name"].split("_")[-1]: stat["value"]},
             }
             for stat in super().format_stats(stats_object)
         ]
         self.output_stat_count = len(self.output_stats)
+        for stat in self.output_stats:
+            self.log.debug(f"Gonna write {stat} to influx")
 
     def write_stats(self):
         self.log.info(
             f"Attempting to write {self.output_stat_count} metrics to Influx..."
         )
-        for stat in self.output_stats:
-            self.write_api.write(self.bucket, self.org, stat)
+        self.write_api.write(
+            self.bucket, self.org,
+            self.output_stats,
+            write_precision=WritePrecision.S,
+        )
         self.write_api.close()
         self.write_api = self.client.write_api(write_options=SYNCHRONOUS)

@@ -29,7 +29,7 @@ class GithubAccess(object):
     def __init__(self, config):
         auth_token = os.environ.get("GITHUB_TOKEN", None)
         if not auth_token:
-            auth_token = config.get("auth", {}).get("github_token", None)
+            auth_token = config["repo"].get("github_token", None)
         if not auth_token:
             raise Exception("Cannot find Github auth token in environment or config")
 
@@ -198,7 +198,6 @@ class GithubAccess(object):
         We'll make a generator here to reduce memory pressure
         and allow for faster results processing
         """
-        self.log.debug(f"Combining {self.BASE_URL} and {url}")
         url = urllib.parse.urljoin(self.BASE_URL, url.strip("/"))
         self.log.debug(f"Requesting {url}")
         req = requests.models.PreparedRequest()
