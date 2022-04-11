@@ -4,7 +4,6 @@ from gql.transport.requests import RequestsHTTPTransport
 import logging
 import os
 import pprint
-import requests
 import time
 
 
@@ -112,8 +111,10 @@ class GithubGraphQL(object):
             yield data
 
     def test_query(self):
-        return [k for k in self._graphql_query(
-            """
+        return [
+            k
+            for k in self._graphql_query(
+                """
             refs(first: $pagination, refPrefix: "refs/heads/") {
               totalCount
               edges {
@@ -134,11 +135,14 @@ class GithubGraphQL(object):
               }
             }
         """
-        )]
+            )
+        ]
 
     def test_query_2(self):
-        return [k for k in self._graphql_query(
-            """
+        return [
+            k
+            for k in self._graphql_query(
+                """
             releases(first: $pagination) {
               totalCount
               edges {
@@ -156,4 +160,5 @@ class GithubGraphQL(object):
               }
             }
         """
-        )]
+            )
+        ]
