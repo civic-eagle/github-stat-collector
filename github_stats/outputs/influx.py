@@ -19,7 +19,7 @@ class InfluxOutput(StatsOutput):
             raise Exception("Can't load influx config section")
         self.log = logging.getLogger("github-stats.output.influx")
 
-        meta = {"url": influx_config["endpoint"]}
+        meta = {"url": influx_config["endpoint"], "enable_gzip": True}
         token = os.environ.get("INFLUX_TOKEN", "")
         if not token:
             token = influx_config.get("auth_token", "")
