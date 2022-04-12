@@ -1,18 +1,15 @@
 from copy import deepcopy
 import logging
 
+from github_stats.schema import tmp_statobj
+
 
 class StatsOutput(object):
     def __init__(self, config, timestamp=0.0):
         self.log = logging.getLogger("github-stats.output")
         default_labels = {"repository_name": config["repo"]["name"]}
-        self.tmpobj = {
-            "name": "",
-            "labels": default_labels,
-            "value": 0,
-            "description": "",
-            "measurement_type": "count",
-        }
+        self.tmpobj = deepcopy(tmp_statobj)
+        self.tmpobj["labels"] = deepcopy(default_labels)
         if timestamp != 0.0:
             self.tmpobj["timestamp"] = timestamp
         self.main_branch = config["repo"]["branches"].get("main", "main")
@@ -104,6 +101,13 @@ class StatsOutput(object):
         stat["value"] = releases["total_window_releases"]
         stat["description"] = "All releases detected within the collection time range"
         formatted_stats.append(stat)
+
+        stat = deepcopy(self.tmpobj)
+        stat["name"] = "total_collection_time_secs"
+        stat["value"] = stats_object["collection_time_secs"]
+        stat["description"] = "Total time (in seconds) that collection took"
+        formatted_stats.append(stat)
+
         """
         Pull requests
 
@@ -128,6 +132,7 @@ class StatsOutput(object):
          },
         """
         pulls = stats_object.get("pull_requests", {})
+
         timetaken = stats_object.get("pull_requests", {}).get("collection_time", 0)
         if timetaken:
             stat = deepcopy(self.tmpobj)

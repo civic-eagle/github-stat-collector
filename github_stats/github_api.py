@@ -98,6 +98,7 @@ class GithubAccess(object):
         self.stats["general"]["tag_matches"] = {
             t["name"]: 0 for t in config["repo"].get("tag_patterns", list())
         }
+        self.starttime = time.time()
         self._load_contributors()
 
     def _retry_empty(self, url):
@@ -246,6 +247,7 @@ class GithubAccess(object):
         self.load_branches(base_date, window)
         self.load_releases(base_date, window)
         self.load_workflow_runs(base_date, window)
+        self.stats["collection_time_secs"] = time.time() - self.starttime
 
     def load_pull_requests(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
         """
