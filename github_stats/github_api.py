@@ -19,6 +19,10 @@ import regex
 import time
 import urllib.parse
 
+from github_stats.schema import user_schema
+from github_stats.schema import user_login_cache as user_login_cache_schema
+from github_stats.schema import stats as stats_schema
+
 calendar.setfirstweekday(calendar.SUNDAY)
 DEFAULT_WINDOW = 1
 
@@ -78,94 +82,21 @@ class GithubAccess(object):
         }
 
         """
-        Defaults for some internal dicts
-        """
-        self.user_schema = {
-            "avg_pr_time_open_secs": 0,
-            "total_branches": 0,
-            "total_closed_pull_requests": 0,
-            "total_commits": 0,
-            "total_merged_pull_requests": 0,
-            "total_open_pull_requests": 0,
-            "total_pr_time_open_secs": 0,
-            "total_pull_requests": 0,
-            "total_releases": 0,
-            "total_window_branches": 0,
-            "total_window_pull_requests": 0,
-            "total_window_releases": 0,
-            "total_window_commits": 0,
-            "events": dict(),
-            "workflows": dict(),
-            "workflow_totals": dict(),
-            "branches": list(),
-        }
-        self.user_login_cache = {
-            "names": dict(),
-            "logins": dict(),
-        }
-        """
         Actual stats object
         """
         self.contributor_collection_time = 0
-        self.stats = {
-            "collection_date": None,
-            "repo_stats": {
-                "code_frequency": dict(),
-                "commit_activity": dict(),
-                "contributors": dict(),
-                "punchcard": {
-                    "total_commits": 0,
-                    "sorted_days": list(),
-                    "days": dict(),
-                },
-                "collection_time": 0,
-            },
-            # "code_scanning": {
-            #     "open": dict(),
-            #     "closed": dict(),
-            #     "dismissed": dict(),
-            # },
-            "branches": {
-                "total_branches": 0,
-                "total_window_branches": 0,
-                "protected_branches": 0,
-                "total_empty_branches": 0,
-                "collection_time": 0,
-            },
-            "workflows": {"events": dict(), "workflows": dict(), "collection_time": 0},
-            "pull_requests": {
-                "total_pull_requests": 0,
-                "total_merged_pull_requests": 0,
-                "total_pr_time_open_secs": 0,
-                "avg_pr_time_open_secs": 0,
-                "total_open_pull_requests": 0,
-                "total_closed_pull_requests": 0,
-                "total_window_pull_requests": 0,
-                "total_draft_pull_requests": 0,
-                "labels": {
-                    label: {
-                        "total_window_prs": 0,
-                        "total_prs": 0,
-                        "pulls": [],
-                    }
-                    for label in self.label_matches
-                },
-                "collection_time": 0,
-            },
-            "users": dict(),
-            "releases": {
-                "total_releases": 0,
-                "total_window_releases": 0,
-                "releases": dict(),
-                "collection_time": 0,
-            },
-            "commits": {"branch_commits": dict(), "total_commits": 0},
-            "general": {
-                "main_branch_commits": 0,
-                "tag_matches": {
-                    t["name"]: 0 for t in config["repo"].get("tag_patterns", list())
-                },
-            },
+        self.user_login_cache = deepcopy(user_login_cache_schema)
+        self.stats = deepcopy(stats_schema)
+        self.stats["pull_requests"]["labels"] = {
+            label: {
+                "total_window_prs": 0,
+                "total_prs": 0,
+                "pulls": [],
+            }
+            for label in self.label_matches
+        }
+        self.stats["general"]["tag_matches"] = {
+            t["name"]: 0 for t in config["repo"].get("tag_patterns", list())
         }
         self._load_contributors()
 
@@ -257,7 +188,7 @@ class GithubAccess(object):
         self.user_login_cache["logins"][login] = name
         self.user_login_cache["names"][name] = login
         if name not in self.stats["users"]:
-            self.stats["users"][name] = deepcopy(self.user_schema)
+            self.stats["users"][name] = deepcopy(user_schema)
         self.log.debug(f"Returned name: {self.user_login_cache['logins'][login]}")
         return self.user_login_cache["logins"][login]
 
@@ -458,7 +389,7 @@ class GithubAccess(object):
                     self.log.debug(
                         f"Creating new user {author} for this branch {name=}"
                     )
-                    self.stats["users"][author] = deepcopy(self.user_schema)
+                    self.stats["users"][author] = deepcopy(user_schema)
                     self.user_login_cache["names"][author] = author
                     self.user_login_cache["logins"][author] = author
             self.stats["users"][author]["total_branches"] += 1

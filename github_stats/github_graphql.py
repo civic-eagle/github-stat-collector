@@ -22,7 +22,7 @@ class GithubGraphQL(object):
         self.main_branch = config["repo"]["branches"].get("main", "main")
         self.release_branch = config["repo"]["branches"].get("release", "main")
         self.non_user_events = ["schedule"]
-        self.pagination = config["repo"].get("pagination", 30)
+        self.pagination = config["repo"].get("pagination", 100)
         self.rt_limit = config["repo"].get("rate_limit_buffer", 10)
 
         transport = RequestsHTTPTransport(
