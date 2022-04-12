@@ -58,7 +58,7 @@ class StatsOutput(object):
                                               'body': '',
                                               'created_at': '2022-03-07 19:59:11'}},
                       'total_releases': 1,
-                      'total_recent_releases': 1},
+                      'total_window_releases': 1},
         """
         commits = stats_object.get("commits", {})
         stat = deepcopy(self.tmpobj)
@@ -72,7 +72,7 @@ class StatsOutput(object):
             stat = deepcopy(self.tmpobj)
             stat["name"] = "branch_commits_total"
             stat["value"] = count
-            stat["description"] = "Count of recent commits to a specific branch"
+            stat["description"] = "Count of commits to a specific branch"
             stat["labels"]["branch"] = branchname
             formatted_stats.append(stat)
 
@@ -91,8 +91,8 @@ class StatsOutput(object):
         stat["description"] = "All releases"
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
-        stat["name"] = "recent_releases_total"
-        stat["value"] = releases["total_recent_releases"]
+        stat["name"] = "window_releases_total"
+        stat["value"] = releases["total_window_releases"]
         stat["description"] = "All releases detected within the collection time range"
         formatted_stats.append(stat)
         """
@@ -103,18 +103,15 @@ class StatsOutput(object):
              'avg_pr_time_open_secs': 236275.55798969071,
              'closed_pull_requests': ['pull1', 'pull2'],
              'labels': {'label2': {'pulls': ['pull2'],
-                                   'total_old_prs': 0,
                                    'total_prs': 0,
-                                   'total_recent_prs': 24},
+                                   'total_window_prs': 24},
                         'label1': {'pulls': ['pull1'],
-                                   'total_old_prs': 0,
                                    'total_prs': 0,
-                                   'total_recent_prs': 8}},
+                                   'total_window_prs': 8}},
              'open_pull_requests': ['pull1'],
-             'total_active_pull_requests': 81,
+             'total_window_pull_requests': 81,
              'total_closed_pull_requests': 1510,
              'total_draft_pull_requests': 9,
-             'total_inactive_pull_requests': 1436,
              'total_merged_pull_requests': 2866,
              'total_open_pull_requests': 7,
              'total_pr_time_open_secs': 366699666.0,
@@ -122,6 +119,13 @@ class StatsOutput(object):
          },
         """
         pulls = stats_object.get("pull_requests", {})
+        timetaken = stats_object.get("pull_requests", {}).get("collection_time", 0)
+        if timetaken:
+            stat = deepcopy(self.tmpobj)
+            stat["name"] = "pr_collection_time_secs"
+            stat["description"] = "seconds taken to collect pull request stats"
+            stat["value"] = timetaken
+            formatted_stats.append(stat)
         pull_desc = {
             "merged_pull_requests_total": {
                 "key": "total_merged_pull_requests",
@@ -132,9 +136,9 @@ class StatsOutput(object):
                 "key": "avg_pr_time_open_secs",
                 "type": "gauge",
             },
-            "active_pull_requests_total": {
+            "window_pull_requests_total": {
                 "desc": "PRs updated within the initial collection time range",
-                "key": "total_active_pull_requests",
+                "key": "total_window_pull_requests",
             },
             "closed_pull_requests_total": {
                 "desc": "Closed PRs (merged or otherwise)",
@@ -148,27 +152,19 @@ class StatsOutput(object):
                 "desc": "Currently open PRs",
                 "key": "total_open_pull_requests",
             },
-            "inactive_pull_requests_total": {
-                "desc": "PRs updated outside the initial collection time range",
-                "key": "total_inactive_pull_requests",
-            },
             "pull_requests_total": {
                 "desc": "All PRs created for the repo",
                 "key": "total_pull_requests",
             },
         }
         label_desc = {
-            "old_labelled_prs_total": {
-                "desc": "prs associated with a label outside the initial collection time range",
-                "key": "total_old_prs",
-            },
             "labelled_prs_total": {
                 "desc": "All PRs associated with a label",
                 "key": "total_prs",
             },
-            "recent_labelled_prs_total": {
+            "window_labelled_prs_total": {
                 "desc": "prs associated with a label within the initial collection time range",
-                "key": "total_recent_prs",
+                "key": "total_window_prs",
             },
         }
         for key, desc in pull_desc.items():
@@ -197,29 +193,24 @@ class StatsOutput(object):
                       'empty_branches': [],
                       'inactive_branches': {'branch2': {'author': ''
                                                        'commit': 'bf49a7d08251488e6379933745de82c108c64c87',
-                                                       'created': '2020-11-24T21:50:26Z'},
+                                                       'created': '2020-11-24T21:50:26Z'}},
          'protected_branches': 1,
-         'total_active_branches': 1,
+         'total_window_branches': 1,
          'total_branches': 3,
-         'total_empty_branches': 0,
-         'total_inactive_branches': 1}
+         'total_empty_branches': 0}
         """
         descriptions = {
             "protected_branches_total": {
                 "desc": "Branches that are protected from direct commits",
                 "key": "protected_branches",
             },
-            "active_branches_total": {
+            "window_branches_total": {
                 "desc": "branches that have received commits within the initial collection time range",
-                "key": "total_active_branches",
+                "key": "total_window_branches",
             },
             "branches_total": {
                 "desc": "All branches of the project",
                 "key": "total_branches",
-            },
-            "inactive_branches_total": {
-                "desc": "branches that have not received commits within the initial collection time range",
-                "key": "total_inactive_branches",
             },
         }
         branches = stats_object.get("branches", {})
@@ -231,6 +222,13 @@ class StatsOutput(object):
             stat["name"] = key
             stat["value"] = value
             stat["description"] = desc["desc"]
+            formatted_stats.append(stat)
+        timetaken = stats_object.get("branches", {}).get("collection_time", 0)
+        if timetaken:
+            stat = deepcopy(self.tmpobj)
+            stat["name"] = "branches_collection_time_secs"
+            stat["description"] = "seconds taken to collect branch stats"
+            stat["value"] = timetaken
             formatted_stats.append(stat)
         """
         Format workflow stats
@@ -315,15 +313,23 @@ class StatsOutput(object):
         }
 
         workflows = stats_object.get("workflows", {})
-        for k, v in workflows.get("events", {}).items():
+        timetaken = stats_object.get("workflows", {}).get("collection_time", 0)
+        if timetaken:
             stat = deepcopy(self.tmpobj)
-            stat["name"] = "workflows_events_total"
-            stat["labels"]["event_type"] = k
-            stat["value"] = v
-            stat[
-                "description"
-            ] = "Count of events during the initial collection time range"
+            stat["name"] = "workflow_collection_time_secs"
+            stat["description"] = "seconds taken to collect workflow stats"
+            stat["value"] = timetaken
             formatted_stats.append(stat)
+        for k, counts in workflows.get("events", {}).items():
+            for key, val in counts.items():
+                stat = deepcopy(self.tmpobj)
+                stat["name"] = f"workflows_events_{key}"
+                if not stat["name"].endswith("total"):
+                    stat["name"] += "_total"
+                stat["labels"]["event_type"] = k
+                stat["value"] = val
+                stat["description"] = "Count of workflow events"
+                formatted_stats.append(stat)
         for k, v in workflows.get("workflows", {}).items():
             for rtype, val in v["runs"].items():
                 stat = deepcopy(self.tmpobj)
@@ -351,7 +357,6 @@ class StatsOutput(object):
                                   'closed_pull_requests': ['pull-1',
                                                            'pull-2'],
                                   'events': {},
-                                  'inactive_branches': [],
                                   'name': '',
                                   'open_pull_requests': [],
                                   'total_merged_pull_requests': 5,
@@ -360,8 +365,7 @@ class StatsOutput(object):
                                   'total_closed_pull_requests': 2,
                                   'total_commits': 0,
                                   'total_releases': 0,
-                                  'total_recent_releases': 0,
-                                  'total_inactive_branches': 0,
+                                  'total_window_releases': 0,
                                   'total_open_pull_requests': 0,
                                   'total_pull_requests': 2,
                                   'workflow_totals': {'failure': 1, 'success': 11},
@@ -369,9 +373,9 @@ class StatsOutput(object):
                                          'security scans': {'success': 4}}},
         """
         user_descriptions = {
-            "recent_releases_total": {
+            "window_releases_total": {
                 "desc": "all recent releases by a user",
-                "key": "total_recent_releases",
+                "key": "total_window_releases",
             },
             "releases_total": {
                 "desc": "All releases by a user",
@@ -388,10 +392,6 @@ class StatsOutput(object):
             "commits_total": {
                 "desc": "all commits by user",
                 "key": "total_commits",
-            },
-            "inactive_branches_total": {
-                "desc": "branches that haven't been used in time range",
-                "key": "total_inactive_branches",
             },
             "avg_user_pr_time_open_secs": {
                 "desc": "Avg. # of seconds a PR is open",
@@ -613,6 +613,13 @@ class StatsOutput(object):
             stat["description"] = "the UTC-based hour (per day) with the most commits"
             stat["labels"]["day"] = dayslug
             stat["value"] = day["busiest_hour"]
+            formatted_stats.append(stat)
+        timetaken = stats_object.get("repo_stats", {}).get("collection_time", 0)
+        if timetaken:
+            stat = deepcopy(self.tmpobj)
+            stat["name"] = "punchard_collection_time_secs"
+            stat["description"] = "seconds taken to collect punchcard stats"
+            stat["value"] = timetaken
             formatted_stats.append(stat)
 
         return formatted_stats
