@@ -71,8 +71,19 @@ class GithubGraphQL(object):
         """
         if not params:
             params = dict()
+
+        """
+        So if we start with "\n     refs(...) {\n..."
+
+        we first split on \n, which may give empty strings in the return object, so filter those out `if not f`
+        Then we split on the first occurance of `(`, which should give us our primary key to read `split("(")[0]`
+        Then finally strip any spaces/etc. from the resultant string
+        """
+        topkey = [f for f in firstquery.split("\n") if f][0].split("(")[0].strip()
+
         if pagination:
             params["pagination"] = {"type": "Int", "value": self.pagination}
+
         # this is terrible, but we need to define any variables passed into the query
         header = self._gql_header % (
             ",".join([f"${k}:{v['type']}!" for k, v in params.items()]),
@@ -80,11 +91,7 @@ class GithubGraphQL(object):
             self.repo,
         )
         querystr = "%s%s}}" % (header, firstquery)
-        """
-        something like `refs(` or `releases(`
-        and remove any non-ascii characters, please
-        """
-        topkey = [f for f in firstquery.split("\n") if f][0].split("(")[0].strip()
+
         value_params = {k: v["value"] for k, v in params.items()}
         self.log.debug(f"{querystr=}")
         self.log.debug(f"{value_params=}")
@@ -102,31 +109,20 @@ class GithubGraphQL(object):
             )
             querystr = "%s%s}}" % (header, nextquery)
             value_params = {k: v["value"] for k, v in params.items()}
-            self.log.info(pprint.pformat(querystr))
-            self.log.info(pprint.pformat(value_params))
+            self.log.debug(pprint.pformat(querystr))
+            self.log.debug(pprint.pformat(value_params))
             res = self._gql_client.execute(gql(querystr), variable_values=value_params)
             self._check_rt(res["rateLimit"])
             data = res["repository"][topkey]
-            self.log.info(pprint.pformat(data))
             yield data
 
     def test_query(self):
-        return [
-            k
-            for k in self._graphql_query(
-                """
+        for k in self._graphql_query(
+            """
             refs(first: $pagination, refPrefix: "refs/heads/") {
-              totalCount
               edges {
                 node {
                   name
-                  target {
-                    ...on Commit {
-                      history(first:0){
-                        totalCount
-                      }
-                    }
-                  }
                 }
               }
               pageInfo {
@@ -135,16 +131,13 @@ class GithubGraphQL(object):
               }
             }
         """
-            )
-        ]
+        ):
+            self.log.info(f"Processing object {pprint.pformat(k)}...")
 
     def test_query_2(self):
-        return [
-            k
-            for k in self._graphql_query(
-                """
+        for k in self._graphql_query(
+            """
             releases(first: $pagination) {
-              totalCount
               edges {
                 node {
                   createdAt
@@ -160,5 +153,5 @@ class GithubGraphQL(object):
               }
             }
         """
-            )
-        ]
+        ):
+            self.log.info(f"Processing object {pprint.pformat(k)}...")
