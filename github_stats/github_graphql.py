@@ -57,6 +57,22 @@ class GithubGraphQL(object):
             self.log.warning(f"About to hit rate limit. Waiting for {wait} seconds.")
             time.sleep(wait)
 
+    def _create_querystr(self, query, params):
+        """
+        Generate a full query string consistently
+
+        :returns: tuple of actual query string and variable_values
+        """
+        # this is terrible, but we need to define any variables passed into the query
+        header = self._gql_header % (
+            ",".join([f"${k}:{v['type']}!" for k, v in params.items()]),
+            self.org,
+            self.repo,
+        )
+        querystr = "%s%s}}" % (header, query)
+        value_params = {k: v["value"] for k, v in params.items()}
+        return querystr, value_params
+
     def _graphql_query(self, firstquery, params=None, pagination=True):
         """
         Add default parameters of pagination and page (unless asked not to)
@@ -84,17 +100,7 @@ class GithubGraphQL(object):
         if pagination:
             params["pagination"] = {"type": "Int", "value": self.pagination}
 
-        # this is terrible, but we need to define any variables passed into the query
-        header = self._gql_header % (
-            ",".join([f"${k}:{v['type']}!" for k, v in params.items()]),
-            self.org,
-            self.repo,
-        )
-        querystr = "%s%s}}" % (header, firstquery)
-
-        value_params = {k: v["value"] for k, v in params.items()}
-        self.log.debug(f"{querystr=}")
-        self.log.debug(f"{value_params=}")
+        querystr, value_params = self._create_querystr(firstquery, params)
         res = self._gql_client.execute(gql(querystr), variable_values=value_params)
         self._check_rt(res["rateLimit"])
         data = res["repository"][topkey]
@@ -102,15 +108,7 @@ class GithubGraphQL(object):
         nextquery = firstquery.replace(") {", ", after: $page) {", 1)
         while data["pageInfo"]["hasNextPage"]:
             params["page"] = {"type": "String", "value": data["pageInfo"]["endCursor"]}
-            header = self._gql_header % (
-                ",".join([f"${k}:{v['type']}!" for k, v in params.items()]),
-                self.org,
-                self.repo,
-            )
-            querystr = "%s%s}}" % (header, nextquery)
-            value_params = {k: v["value"] for k, v in params.items()}
-            self.log.debug(pprint.pformat(querystr))
-            self.log.debug(pprint.pformat(value_params))
+            querystr, value_params = self._create_querystr(nextquery, params)
             res = self._gql_client.execute(gql(querystr), variable_values=value_params)
             self._check_rt(res["rateLimit"])
             data = res["repository"][topkey]
