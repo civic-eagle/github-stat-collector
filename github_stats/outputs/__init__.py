@@ -17,6 +17,15 @@ class StatsOutput(object):
             self.tmpobj["timestamp"] = timestamp
         self.main_branch = config["repo"]["branches"].get("main", "main")
         self.release_branch = config["repo"]["branches"].get("release", "main")
+        self.user_filter_keys = config["repo"].get(
+            "user_filter_keys",
+            [
+                "total_window_commits",
+                "total_window_pull_requests",
+                "total_window_releases",
+            ],
+        )
+
         self.float_measurements = ["percent", "gauge"]
 
     def format_stats(self, stats_object):
@@ -381,6 +390,10 @@ class StatsOutput(object):
                 "desc": "All releases by a user",
                 "key": "total_releases",
             },
+            "window_branches_total": {
+                "desc": "all existing branches created by user in time range",
+                "key": "total_window_branches",
+            },
             "branches_total": {
                 "desc": "all existing branches created by user",
                 "key": "total_branches",
@@ -388,6 +401,10 @@ class StatsOutput(object):
             "closed_pull_requests_total": {
                 "desc": "any closed pull requests",
                 "key": "total_closed_pull_requests",
+            },
+            "window_commits_total": {
+                "desc": "all commits by user in time range",
+                "key": "total_window_commits",
             },
             "commits_total": {
                 "desc": "all commits by user",
@@ -406,12 +423,19 @@ class StatsOutput(object):
                 "desc": "PRs open in time range by user",
                 "key": "total_open_pull_requests",
             },
+            "window_pull_requests_total": {
+                "desc": "all created PRs by user in time range",
+                "key": "total_pull_requests",
+            },
             "pull_requests_total": {
                 "desc": "all created PRs by user",
                 "key": "total_pull_requests",
             },
         }
         for user, data in stats_object.get("users", {}).items():
+            if all(data[k] == 0 for k in self.user_filter_keys):
+                self.log.warning(f"{user} hit all filters for time range. Dropping")
+                continue
             for wkstat, desc in user_descriptions.items():
                 stat = deepcopy(self.tmpobj)
                 stat["name"] = f"users_{wkstat}"
@@ -425,9 +449,7 @@ class StatsOutput(object):
                 stat["labels"]["user"] = user
                 stat["labels"]["run_type"] = wktype
                 stat["value"] = value
-                stat[
-                    "description"
-                ] = "total count of workflow runs by a user in the initial collection time range"
+                stat["description"] = "total count of workflow runs by a user"
                 formatted_stats.append(stat)
             for workflow, wktypes in data["workflows"].items():
                 for wktype, value in wktypes.items():
@@ -439,7 +461,7 @@ class StatsOutput(object):
                     stat["value"] = value
                     stat[
                         "description"
-                    ] = "count of runs for a workflow by a user in the initial collection time range"
+                    ] = "count of runs for a workflow by a user by workflow result"
                     formatted_stats.append(stat)
 
         """

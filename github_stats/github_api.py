@@ -57,7 +57,7 @@ class GithubAccess(object):
         self.ignored_statuses = config["repo"].get("ignored_statuses", ["queued"])
         self.main_branch = config["repo"]["branches"].get("main", "main")
         self.release_branch = config["repo"]["branches"].get("release", "main")
-        self.non_user_events = ["schedule"]
+        self.non_user_events = config["repo"].get("non_user_events", ["schedule"])
         self.per_page = config.get("query", {}).get("results_per_page", 100)
         self.special_logins = config["repo"].get("special_logins", {})
         self.special_names = {v: k for k, v in self.special_logins.items()}
@@ -81,22 +81,23 @@ class GithubAccess(object):
         Defaults for some internal dicts
         """
         self.user_schema = {
-            "total_window_branches": 0,
-            "total_releases": 0,
-            "total_window_releases": 0,
             "avg_pr_time_open_secs": 0,
-            "total_pr_time_open_secs": 0,
-            "total_pull_requests": 0,
-            "total_window_pull_requests": 0,
-            "total_merged_pull_requests": 0,
-            "total_open_pull_requests": 0,
+            "total_branches": 0,
             "total_closed_pull_requests": 0,
             "total_commits": 0,
+            "total_merged_pull_requests": 0,
+            "total_open_pull_requests": 0,
+            "total_pr_time_open_secs": 0,
+            "total_pull_requests": 0,
+            "total_releases": 0,
+            "total_window_branches": 0,
+            "total_window_pull_requests": 0,
+            "total_window_releases": 0,
+            "total_window_commits": 0,
             "events": dict(),
             "workflows": dict(),
             "workflow_totals": dict(),
             "branches": list(),
-            "total_branches": 0,
         }
         self.user_login_cache = {
             "names": dict(),
@@ -274,7 +275,9 @@ class GithubAccess(object):
             return self.user_login_cache["logins"][name]
         if name in self.special_logins:
             return self.user_login_cache["logins"][self.special_logins[name]]
-        raise Exception(f"User {name} doesn't exist in cache or in {self.special_logins}!")
+        raise Exception(
+            f"User {name} doesn't exist in cache or in {self.special_logins}!"
+        )
 
     def _load_contributors(self):
         """
@@ -344,7 +347,7 @@ class GithubAccess(object):
             ):
                 self.stats["pull_requests"]["total_window_pull_requests"] += 1
                 self._process_labels(pull["title"], pull["labels"], "total_old_prs")
-                self.stats["users"][author]["total_window_requests"] += 1
+                self.stats["users"][author]["total_window_pull_requests"] += 1
             for label in pull["labels"]:
                 name = label["name"]
                 for labelname, matches in self.label_matches.items():
@@ -461,12 +464,8 @@ class GithubAccess(object):
             self.stats["users"][author]["total_branches"] += 1
             # 2020-12-30T03:19:29Z (RFC3339)
             if dt_created.date() < base_date.date() and dt_created.date() > td.date():
-                self.stats["branches"]["branches"][name] = {
-                    "commit": data["commit"]["sha"],
-                    "author": author,
-                    "created": data["commit"]["commit"]["author"]["date"],
-                }
                 self.stats["branches"]["total_window_branches"] += 1
+                self.stats["users"][author]["total_window_branches"] += 1
                 self.log.debug(f"Branch {name}: created {dt_created}")
         self.stats["branches"]["collection_time"] = time.time() - starttime
         self.log.info(
@@ -778,6 +777,8 @@ class GithubAccess(object):
             # Track user stats
             if event not in self.non_user_events:
                 self.stats["users"][user]["total_commits"] += 1
+                if dt_created > td and dt_created < base_date:
+                    self.stats["users"][user]["total_window_commits"] += 1
                 if event in self.stats["users"][user]["events"]:
                     self.stats["users"][user]["events"][event] += 1
                 else:

@@ -62,8 +62,6 @@ def main():
     influx = InfluxOutput(config, timestamp)
     gh.load_all_stats(timestamp, args.window)
     influx.format_stats(gh.stats)
-    pprint.pprint(influx.output_stats)
-    exit(1)
     influx.write_stats()
 
     logger.info(
