@@ -57,8 +57,8 @@ class StatsOutput(object):
         """
         Simple stats
         example:
-         'commits': {'branch_commits': {'branch1": 2},
-                     'total_commits': 3},
+         'commits': {'branch_commits': {'branch1": {"total_commits": 2, "window_commits": 1},
+                     'total_commits': 3, "window_commits": 1},
          'general': {'main_branch_commits': 1, 'tag_matches': {'release tag': 1}},
          'releases': {'releases': {'v0.1.0': {'author': '',
                                               'body': '',
@@ -70,15 +70,25 @@ class StatsOutput(object):
         stat = deepcopy(self.tmpobj)
         stat["name"] = "commits_total"
         stat["value"] = commits["total_commits"]
+        stat["description"] = "All commits for the project"
+        stat = deepcopy(self.tmpobj)
+        stat["name"] = "window_commits_total"
+        stat["value"] = commits["window_commits"]
         stat[
             "description"
         ] = "All commits detected within the initial collection time range"
         formatted_stats.append(stat)
-        for branchname, count in commits["branch_commits"].items():
+        for branchname, values in commits["branch_commits"].items():
             stat = deepcopy(self.tmpobj)
             stat["name"] = "branch_commits_total"
-            stat["value"] = count
+            stat["value"] = values["total_commits"]
             stat["description"] = "Count of commits to a specific branch"
+            stat["labels"]["branch"] = branchname
+            formatted_stats.append(stat)
+            stat = deepcopy(self.tmpobj)
+            stat["name"] = "branch_window_commits_total"
+            stat["value"] = values["window_commits"]
+            stat["description"] = "Count of commits to a specific branch in time range"
             stat["labels"]["branch"] = branchname
             formatted_stats.append(stat)
 
@@ -87,6 +97,14 @@ class StatsOutput(object):
         stat["name"] = "main_branch_commits_total"
         stat["value"] = general["main_branch_commits"]
         stat["description"] = "commits to the configured 'main' branch for the repo"
+        stat["labels"]["branch_name"] = self.main_branch
+        formatted_stats.append(stat)
+        stat = deepcopy(self.tmpobj)
+        stat["name"] = "main_branch_window_commits_total"
+        stat["value"] = general["window_main_branch_commits"]
+        stat[
+            "description"
+        ] = "commits to the configured 'main' branch for the repo in time range"
         stat["labels"]["branch_name"] = self.main_branch
         formatted_stats.append(stat)
 

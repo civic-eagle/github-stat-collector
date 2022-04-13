@@ -759,16 +759,35 @@ class GithubAccess(object):
                 self.log.debug(f"Empty branch name for: {pprint.pformat(run)}")
             else:
                 self.stats["commits"]["total_commits"] += 1
+                if dt_created > td and dt_created < base_date:
+                    self.stats["commits"]["window_commits"] += 1
                 if branch in self.stats["commits"]["branch_commits"]:
-                    self.stats["commits"]["branch_commits"][branch] += 1
+                    self.stats["commits"]["branch_commits"][branch][
+                        "total_commits"
+                    ] += 1
+                    if dt_created > td and dt_created < base_date:
+                        self.stats["commits"]["branch_commits"][branch][
+                            "window_commits"
+                        ] += 1
                 else:
-                    self.stats["commits"]["branch_commits"][branch] = 1
+                    if dt_created > td and dt_created < base_date:
+                        self.stats["commits"]["branch_commits"][branch] = {
+                            "total_commits": 1,
+                            "window_commits": 1,
+                        }
+                    else:
+                        self.stats["commits"]["branch_commits"][branch] = {
+                            "total_commits": 1,
+                            "window_commits": 0,
+                        }
                 # Track tag matching branches
                 for name, pattern in self.tag_matches.items():
                     if pattern.match(branch):
                         self.stats["general"]["tag_matches"][name] += 1
-            if branch == self.main_branch:
-                self.stats["general"]["main_branch_commits"] += 1
+                if branch == self.main_branch:
+                    self.stats["general"]["main_branch_commits"] += 1
+                    if dt_created > td and dt_created < base_date:
+                        self.stats["general"]["window_main_branch_commits"] += 1
 
         """
         calculate percentage of runs executed in this window
