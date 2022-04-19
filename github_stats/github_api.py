@@ -23,6 +23,7 @@ from github_stats.schema import user_schema
 from github_stats.schema import user_login_cache as user_login_cache_schema
 from github_stats.schema import stats as stats_schema
 from github_stats.schema import DEFAULT_WINDOW
+from github_stats.gitops import Repo
 
 calendar.setfirstweekday(calendar.SUNDAY)
 
@@ -53,6 +54,7 @@ class GithubAccess(object):
         adapter = HTTPAdapter(max_retries=retry)
         self._request.mount("https://", adapter)
         self._request.headers.update(headers)
+        repo = Repo(config)
 
         self.org = config["repo"]["org"]
         self.repo_name = f"{self.org}/{config['repo']['name']}"
