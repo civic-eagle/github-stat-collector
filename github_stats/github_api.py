@@ -22,9 +22,9 @@ import urllib.parse
 from github_stats.schema import user_schema
 from github_stats.schema import user_login_cache as user_login_cache_schema
 from github_stats.schema import stats as stats_schema
+from github_stats.schema import DEFAULT_WINDOW
 
 calendar.setfirstweekday(calendar.SUNDAY)
-DEFAULT_WINDOW = 1
 
 
 class GithubAccess(object):

@@ -1,6 +1,7 @@
 """
-Defaults for some internal dicts
+Defaults for some internal data
 """
+DEFAULT_WINDOW = 1
 
 user_schema = {
     "avg_pr_time_open_secs": 0,
@@ -52,7 +53,7 @@ stats = {
         "total_closed_pull_requests": 0,
         "total_window_pull_requests": 0,
         "total_draft_pull_requests": 0,
-        "labels": {},
+        "labels": dict(),
         "collection_time": 0,
     },
     "releases": {
