@@ -55,7 +55,7 @@ def main():
     if args.debug:
         logger.setLevel(logging.DEBUG)
     config = yaml.safe_load(open(args.config, "r", encoding="utf-8").read())
-    timestamp = datetime.fromtimestamp(args.timestamp)
+    timestamp = datetime.utcfromtimestamp(args.timestamp)
     starttime = time.time()
     gh = GithubAccess(config)
     influx = InfluxOutput(config, timestamp)

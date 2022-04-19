@@ -1,11 +1,7 @@
-from datetime import datetime, timedelta
 import logging
 import os
 import pygit2
 import time
-
-# local imports
-from github_stats.schema import DEFAULT_WINDOW
 
 
 class Repo(object):
@@ -39,7 +35,7 @@ class Repo(object):
         self.log.debug("Fetching remote...")
         progress = remote.fetch(callbacks=self.callbacks)
         while progress.received_objects < progress.total_objects:
-            sleep(1)
+            time.sleep(1)
         self.log.debug("Fast-forwarding...")
         remote_id = r.lookup_reference("refs/remotes/origin/develop").target
         self.log.debug(f"remote id: {remote_id}")
@@ -54,14 +50,19 @@ class Repo(object):
 
     def _checkout_branch(self, branch):
         self.log.debug(f"Checking out {branch}...")
-        remote_id = r.lookup_reference(f"refs/remotes/origin/{branch}").target
+        remote_id = self.repoobj.lookup_reference(
+            f"refs/remotes/origin/{branch}"
+        ).target
         self.log.debug(f"remote id: {remote_id}")
-        repo_branch = r.lookup_reference(f"refs/heads/{branch}")
+
+        # force merge steps
+        repo_branch = self.repoobj.lookup_reference(f"refs/heads/{branch}")
         repo_branch.set_target(remote_id)
-        r.checkout_tree(r.get(remote_id))
-        master_ref = r.lookup_reference(f"refs/heads/{branch}")
-        master_ref.set_target(remote_id)
-        r.head.set_target(remote_id)
+
+        self.repoobj.checkout_tree(self.repoobj.get(remote_id))
+        head_ref = self.repoobj.lookup_reference(f"refs/heads/{branch}")
+        head_ref.set_target(remote_id)
+        self.repoobj.head.set_target(remote_id)
 
     def list_branches(self):
         # count the two branches we'll otherwise skip
@@ -70,7 +71,11 @@ class Repo(object):
         else:
             branch_count = 1
 
-        self.log.info(f"Checking branches...")
+        self.log.info("Checking branches...")
+        for branch in list(
+            set([self.primary_branches["main"], self.primary_branches["release"]])
+        ):
+            yield branch
         for branch in self.repoobj.branches:
             branch_name = branch.replace("origin/", "")
             if branch_name in [
@@ -83,11 +88,9 @@ class Repo(object):
             yield branch_name
         self.log.info(f"Found {branch_count} branches in the repo")
 
-    def commit_log(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
+    def commit_log(self):
         self.log.info("Checking commit log...")
-        td = base_date - timedelta(days=window)
         commit_count = 0
-        window_commit_count = 0
         for commit in self.repoobj.walk(
             self.repoobj.head.target,
             pygit2.GIT_SORT_TOPOLOGICAL | pygit2.GIT_SORT_REVERSE,
@@ -99,9 +102,5 @@ class Repo(object):
                 "time": int(commit.commit_time),
                 "message": str(commit.message),
             }
-            if td.timestamp() < commitobj["time"] < base_date.timestamp():
-                window_commit_count += 1
             yield commitobj
-        self.log.info(
-            f"Found {commit_count} commits, {window_commit_count} of which happened in our window"
-        )
+        self.log.info(f"Found {commit_count} commits")
