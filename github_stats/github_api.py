@@ -93,7 +93,6 @@ class GithubAccess(object):
             label: {
                 "total_window_prs": 0,
                 "total_prs": 0,
-                "pulls": [],
             }
             for label in self.label_matches
         }
@@ -293,15 +292,27 @@ class GithubAccess(object):
                 for labelname, matches in self.label_matches.items():
                     if name not in matches:
                         continue
-                self.log.debug(f"{pull['title']}: {name} ({matches=}) for {label}")
-                self.stats["pull_requests"]["labels"][labelname]["total_prs"] += 1
-                if (
-                    modified_time.date() < base_date.date()
-                    and modified_time.date() > td.date()
-                ):
-                    self.stats["pull_requests"]["labels"][labelname][
-                        "total_window_prs"
-                    ] += 1
+                    self.log.debug(f"{pull['title']}: {name} ({matches=}) for {label}")
+                    self.stats["pull_requests"]["labels"][labelname]["total_prs"] += 1
+                    if (
+                        modified_time.date() < base_date.date()
+                        and modified_time.date() > td.date()
+                    ):
+                        self.stats["pull_requests"]["labels"][labelname][
+                            "total_window_prs"
+                        ] += 1
+                if name not in self.label_matches.keys():
+                    if name not in self.stats["pull_requests"]["labels"]:
+                        self.stats["pull_requests"]["labels"][name] = {"total_prs": 1, "total_window_prs": 0}
+                    else:
+                        self.stats["pull_requests"]["labels"][name]["total_prs"] += 1
+                    if (
+                        modified_time.date() < base_date.date()
+                        and modified_time.date() > td.date()
+                    ):
+                        self.stats["pull_requests"]["labels"][name][
+                            "total_window_prs"
+                        ] += 1
 
             """
             Calculate avg PR time

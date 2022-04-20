@@ -10,6 +10,10 @@ We'll adhere to the OpenMetrics standard as much as possible:
 
 https://github.com/OpenObservability/OpenMetrics/blob/main/specification/OpenMetrics.md
 
+# Label matching
+
+Because we may want additional or aggregate labels for tracking work in the repository, we can create these matching groups in our config. Any custom labels added will override the default labels collected.
+
 # Notes on user name formatting
 
 Because Github API endpoints don't return consistent user names between each of them, we may see _some_ overlap of users, but we attempt to get user names as close to consistent (one mapping per user) as possible.
