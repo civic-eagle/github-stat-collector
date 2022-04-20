@@ -18,8 +18,8 @@ class Repo(object):
         )
         self.repo_url = config["repo"]["clone_url"]
         self.repo_path = f"{config['repo']['folder']}/{config['repo']['name']}"
-        self.repoobj = self._prep_repo()
         self.primary_branches = config["repo"]["branches"]
+        self._prep_repo()
 
     def _prep_repo(self):
         if not pygit2.discover_repository(self.repo_path):
@@ -30,39 +30,18 @@ class Repo(object):
                 callbacks=self.callbacks,
             )
         self.log.info(f"Updating {self.repo_path}...")
-        r = pygit2.Repository(self.repo_path)
-        remote = r.remotes["origin"]
-        self.log.debug("Fetching remote...")
+        self.repoobj = pygit2.Repository(self.repo_path)
+        remote = self.repoobj.remotes["origin"]
         progress = remote.fetch(callbacks=self.callbacks)
         while progress.received_objects < progress.total_objects:
             time.sleep(1)
-        self.log.debug("Fast-forwarding...")
-        remote_id = r.lookup_reference("refs/remotes/origin/develop").target
-        self.log.debug(f"remote id: {remote_id}")
-        repo_branch = r.lookup_reference("refs/heads/develop")
-        repo_branch.set_target(remote_id)
-        r.checkout_tree(r.get(remote_id))
-        master_ref = r.lookup_reference("refs/heads/develop")
-        master_ref.set_target(remote_id)
-        r.head.set_target(remote_id)
-        self.log.info(f"{self.repo_path} is up to date")
-        return r
+        self._checkout_branch(self.primary_branches["main"])
 
     def _checkout_branch(self, branch):
         self.log.debug(f"Checking out {branch}...")
-        remote_id = self.repoobj.lookup_reference(
-            f"refs/remotes/origin/{branch}"
-        ).target
-        self.log.debug(f"remote id: {remote_id}")
-
-        # force merge steps
-        repo_branch = self.repoobj.lookup_reference(f"refs/heads/{branch}")
-        repo_branch.set_target(remote_id)
-
-        self.repoobj.checkout_tree(self.repoobj.get(remote_id))
-        head_ref = self.repoobj.lookup_reference(f"refs/heads/{branch}")
-        head_ref.set_target(remote_id)
-        self.repoobj.head.set_target(remote_id)
+        self.log.debug("pulling upstream...")
+        remote_id = self.repoobj.lookup_reference(f"refs/remotes/origin/{branch}")
+        self.repoobj.checkout(remote_id, strategy=pygit2.GIT_CHECKOUT_ALLOW_CONFLICTS)
 
     def list_branches(self):
         # count the two branches we'll otherwise skip
@@ -71,7 +50,7 @@ class Repo(object):
         else:
             branch_count = 1
 
-        self.log.info("Checking branches...")
+        self.log.debug("listing branches...")
         for branch in list(
             set([self.primary_branches["main"], self.primary_branches["release"]])
         ):
@@ -86,21 +65,39 @@ class Repo(object):
                 continue
             branch_count += 1
             yield branch_name
-        self.log.info(f"Found {branch_count} branches in the repo")
+        self.log.debug(f"Found {branch_count} branches in the repo")
 
-    def commit_log(self):
-        self.log.info("Checking commit log...")
-        commit_count = 0
-        for commit in self.repoobj.walk(
-            self.repoobj.head.target,
-            pygit2.GIT_SORT_TOPOLOGICAL | pygit2.GIT_SORT_REVERSE,
-        ):
-            commit_count += 1
-            # commit objects are C objects, need to convert types
-            commitobj = {
-                "author": str(commit.author),
-                "time": int(commit.commit_time),
-                "message": str(commit.message),
-            }
-            yield commitobj
-        self.log.info(f"Found {commit_count} commits")
+    def _get_branch_ids(self):
+        for branch_name in list(self.repoobj.branches.remote):
+            branch = self.repoobj.branches.get(branch_name)
+            latest_commit_id = branch.target
+            yield (branch_name, latest_commit_id)
+
+    def collect_commit_log(self):
+        self.log.debug("Loading commit log...")
+        self._checkout_branch(self.primary_branches["main"])
+        for branch_name in self.list_branches():
+            commit_count = 0
+            self.log.info(f"Collecting from branch {branch_name}")
+            branch = self.repoobj.branches.get(f"origin/{branch_name}")
+            latest_commit_id = branch.target
+            walker = self.repoobj.walk(latest_commit_id, pygit2.GIT_SORT_REVERSE)
+            """
+            using this on a branch should only return commits to that branch
+            Unfortunately, it does not
+            """
+            walker.simplify_first_parent()
+            for commit in walker:
+                commit_count += 1
+                # commit objects are C objects, need to convert types
+                commitobj = {
+                    "hash": str(commit.hex),
+                    "author": str(commit.author),
+                    "time": int(commit.commit_time),
+                    "message": str(commit.message),
+                    "branch": branch_name,
+                }
+                self.log.info(f"Obj: {commitobj}, Parents: {commit.parents}")
+                # self.log.info(pprint.pformat(commitobj))
+                # yield commitobj
+            self.log.info(f"Found {commit_count} in {branch_name}")
