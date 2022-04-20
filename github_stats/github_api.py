@@ -237,7 +237,7 @@ class GithubAccess(object):
             self.stats["collection_date"] = date
             self.log.debug(f"Collection timestamp: {date}")
         if not self.stats["window"]:
-            self.stats["window"] = window * 2
+            self.stats["window"] = window * 4
             self.log.debug(f"Collection window: {window}")
 
     def load_all_stats(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
@@ -303,7 +303,10 @@ class GithubAccess(object):
                         ] += 1
                 if name not in self.label_matches.keys():
                     if name not in self.stats["pull_requests"]["labels"]:
-                        self.stats["pull_requests"]["labels"][name] = {"total_prs": 1, "total_window_prs": 0}
+                        self.stats["pull_requests"]["labels"][name] = {
+                            "total_prs": 1,
+                            "total_window_prs": 0,
+                        }
                     else:
                         self.stats["pull_requests"]["labels"][name]["total_prs"] += 1
                     if (
@@ -681,7 +684,8 @@ class GithubAccess(object):
                 user = "unknown"
             self.stats["commits"]["total_commits"] += 1
             self.stats["users"][user]["total_commits"] += 1
-            self.stats["users"][user]["last_commit_time"] = commit["time"]
+            if commit["time"] > self.stats["users"][user]["last_commit_time"]:
+                self.stats["users"][user]["last_commit_time"] = commit["time"]
             if td < commit["time"] < base_ts:
                 self.stats["commits"]["window_commits"] += 1
                 self.stats["users"][user]["total_window_commits"] += 1

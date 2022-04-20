@@ -446,10 +446,14 @@ class StatsOutput(object):
                 "key": "total_pull_requests",
             },
         }
-        td = (stats_object["collection_date"] - timedelta(days=stats_object["window"])).timestamp()
+        td = (
+            stats_object["collection_date"] - timedelta(days=stats_object["window"])
+        ).timestamp()
         for user, data in stats_object.get("users", {}).items():
             if data["last_commit_time"] < td:
-                self.log.warning(f"{user}'s last commit {data['last_commit_time']} outside window {td}. Dropping")
+                self.log.warning(
+                    f"{user}'s last commit {data['last_commit_time']} outside window {td}. Dropping"
+                )
                 continue
             for wkstat, desc in user_descriptions.items():
                 stat = deepcopy(self.tmpobj)
