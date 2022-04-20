@@ -233,10 +233,13 @@ class GithubAccess(object):
             f"Loaded contributors in {self.contributor_collection_time} seconds"
         )
 
-    def _set_collection_date(self, date):
+    def _set_collection_date(self, date, window):
         if not self.stats["collection_date"]:
             self.stats["collection_date"] = date
             self.log.debug(f"Collection timestamp: {date}")
+        if not self.stats["window"]:
+            self.stats["window"] = window * 2
+            self.log.debug(f"Collection window: {window}")
 
     def load_all_stats(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
         """
@@ -244,7 +247,7 @@ class GithubAccess(object):
 
         :returns: None
         """
-        self._set_collection_date(base_date)
+        self._set_collection_date(base_date, window)
         self.load_commits(base_date, window)
         self.load_branches(base_date, window)
         self.load_repo_stats(base_date, window)
@@ -262,7 +265,7 @@ class GithubAccess(object):
 
         :returns: None
         """
-        self._set_collection_date(base_date)
+        self._set_collection_date(base_date, window)
         td = base_date - timedelta(days=window)
         starttime = time.time()
         self.log.info("Loading Pull Request Data...")
@@ -360,7 +363,7 @@ class GithubAccess(object):
 
         :returns: None
         """
-        self._set_collection_date(base_date)
+        self._set_collection_date(base_date, window)
         td = base_date - timedelta(days=window)
         starttime = time.time()
         self.log.info("Loading branch details...")
@@ -419,7 +422,7 @@ class GithubAccess(object):
         :returns: None
         """
         self.log.info("Loading Repo Stats (Github Insights)...")
-        self._set_collection_date(base_date)
+        self._set_collection_date(base_date, window)
         starttime = time.time()
 
         """
@@ -653,15 +656,22 @@ class GithubAccess(object):
     def load_commits(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
         self.log.info("Loading commit info...")
         starttime = time.time()
-        td = base_date - timedelta(days=window)
+        td = (base_date - timedelta(days=window)).timestamp()
+        base_ts = base_date.timestamp()
         for commit in self.repo.commit_log():
+            if commit["time"] > base_ts:
+                self.log.debug(
+                    f"{commit['message']} for {commit['author']} is in the future. Skipping"
+                )
+                continue
             try:
                 user = self._cache_user_name(commit["author"].split(" <")[0])
             except Exception:
                 user = "unknown"
             self.stats["commits"]["total_commits"] += 1
             self.stats["users"][user]["total_commits"] += 1
-            if td.timestamp() < commit["time"] < base_date.timestamp():
+            self.stats["users"][user]["last_commit_time"] = commit["time"]
+            if td < commit["time"] < base_ts:
                 self.stats["commits"]["window_commits"] += 1
                 self.stats["users"][user]["total_window_commits"] += 1
         self.stats["commits"]["collection_time"] = time.time() - starttime
@@ -673,7 +683,7 @@ class GithubAccess(object):
         :returns: None
         """
         self.log.info("Loading workflow details...")
-        self._set_collection_date(base_date)
+        self._set_collection_date(base_date, window)
         starttime = time.time()
         td = base_date - timedelta(days=window)
         url = f"/repos/{self.repo_name}/actions/runs"
@@ -764,9 +774,22 @@ class GithubAccess(object):
                 self.log.debug(f"Empty branch name for: {pprint.pformat(run)}")
             else:
                 if branch in self.stats["commits"]["branch_commits"]:
-                    self.stats["commits"]["branch_commits"][branch] += 1
+                    self.stats["commits"]["branch_commits"][branch][
+                        "total_commits"
+                    ] += 1
+                    if dt_created > td and dt_created < base_date:
+                        self.stats["commits"]["branch_commits"][branch][
+                            "window_commits"
+                        ] += 1
                 else:
-                    self.stats["commits"]["branch_commits"][branch] = 1
+                    self.stats["commits"]["branch_commits"][branch] = {
+                        "total_commits": 1,
+                        "window_commits": 0,
+                    }
+                    if dt_created > td and dt_created < base_date:
+                        self.stats["commits"]["branch_commits"][branch][
+                            "window_commits"
+                        ] += 1
                 # Track tag matching branches
                 for name, pattern in self.tag_matches.items():
                     if pattern.match(branch):

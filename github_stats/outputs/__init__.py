@@ -1,3 +1,4 @@
+from datetime import timedelta
 from copy import deepcopy
 import logging
 
@@ -14,15 +15,6 @@ class StatsOutput(object):
             self.tmpobj["timestamp"] = timestamp
         self.main_branch = config["repo"]["branches"].get("main", "main")
         self.release_branch = config["repo"]["branches"].get("release", "main")
-        self.user_filter_keys = config["repo"].get(
-            "user_filter_keys",
-            [
-                "total_window_commits",
-                "total_window_pull_requests",
-                "total_window_releases",
-            ],
-        )
-
         self.float_measurements = ["percent", "gauge"]
 
     def format_stats(self, stats_object):
@@ -390,7 +382,6 @@ class StatsOutput(object):
                                                            'pull-2'],
                                   'events': {},
                                   'name': '',
-                                  'open_pull_requests': [],
                                   'total_merged_pull_requests': 5,
                                   'avg_pr_time_open_secs': 6000,
                                   'total_branches': 0,
@@ -455,9 +446,10 @@ class StatsOutput(object):
                 "key": "total_pull_requests",
             },
         }
+        td = (stats_object["collection_date"] - timedelta(days=stats_object["window"])).timestamp()
         for user, data in stats_object.get("users", {}).items():
-            if all(data[k] == 0 for k in self.user_filter_keys):
-                self.log.warning(f"{user} hit all filters for time range. Dropping")
+            if data["last_commit_time"] < td:
+                self.log.warning(f"{user}'s last commit {data['last_commit_time']} outside window {td}. Dropping")
                 continue
             for wkstat, desc in user_descriptions.items():
                 stat = deepcopy(self.tmpobj)

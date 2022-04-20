@@ -21,6 +21,7 @@ user_schema = {
     "workflows": dict(),
     "workflow_totals": dict(),
     "branches": list(),
+    "last_commit_time": 0,
 }
 
 user_login_cache = {
@@ -37,6 +38,7 @@ stats = {
         "collection_time": 0,
     },
     "collection_date": None,
+    "window": None,
     "collection_time_secs": 0,
     "commits": {
         "branch_commits": dict(),

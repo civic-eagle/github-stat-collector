@@ -20,6 +20,19 @@ repo:
       - dependencies
     infrastructure:
       - infrastructure
+  special_logins:
+    "User 1": user1
+  broken_users:
+    - user2@test.com
+  clone_url: https://github.com/organization/repo
+  folder: repos
 
 google:
   project_id: google-project
+
+influx:
+  metric_prefix: github
+  auth_token: ""
+  endpoint: http://influx
+  bucket: bucket1
+  org: org1
