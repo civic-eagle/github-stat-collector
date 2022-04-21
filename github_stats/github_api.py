@@ -409,14 +409,18 @@ class GithubAccess(object):
             else:
                 if not data or not data["commit"]["commit"]["author"]["name"]:
                     self.stats["branches"]["total_empty_branches"] += 1
-                    self.log.debug(f"{branch} is missing branch information. Skipping...")
+                    self.log.debug(
+                        f"{branch} is missing branch information. Skipping..."
+                    )
                     continue
                 # the best we can do (for now) is get the most recent commit time
                 updated = data["commit"]["commit"]["author"]["date"]
                 dt_updated = datetime.strptime(updated, "%Y-%m-%dT%H:%M:%SZ")
                 self.log.debug(f"{branch} updated at {dt_updated}")
                 if dt_updated > base_date:
-                    self.log.debug(f"Branch {branch} was created in the future. Skipping.")
+                    self.log.debug(
+                        f"Branch {branch} was created in the future. Skipping."
+                    )
                     continue
                 if data["protected"]:
                     self.stats["branches"]["protected_branches"] += 1

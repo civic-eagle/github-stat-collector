@@ -55,7 +55,9 @@ class Repo(object):
         for branch in list(
             set([self.primary_branches["main"], self.primary_branches["release"]])
         ):
-            remote_id = self.repoobj.lookup_reference(f"refs/remotes/origin/{branch}").target
+            remote_id = self.repoobj.lookup_reference(
+                f"refs/remotes/origin/{branch}"
+            ).target
             commit = self.repoobj.get(remote_id)
             yield (branch, commit.commit_time)
         for branch in self.repoobj.branches:
@@ -67,7 +69,9 @@ class Repo(object):
             ]:
                 continue
             branch_count += 1
-            remote_id = self.repoobj.lookup_reference(f"refs/remotes/origin/{branch_name}").target
+            remote_id = self.repoobj.lookup_reference(
+                f"refs/remotes/origin/{branch_name}"
+            ).target
             commit = self.repoobj.get(remote_id)
             yield (branch_name, commit.commit_time)
         self.log.info(f"Found {branch_count} branches in the repo")
