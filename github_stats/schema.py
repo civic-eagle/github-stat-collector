@@ -44,7 +44,6 @@ stats = {
         "branch_commits": dict(),
         "total_commits": 0,
         "window_commits": 0,
-        "collection_time": 0,
     },
     "general": {
         "main_branch_commits": 0,

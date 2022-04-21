@@ -35,13 +35,14 @@ class Repo(object):
         progress = remote.fetch(callbacks=self.callbacks)
         while progress.received_objects < progress.total_objects:
             time.sleep(1)
-        self._checkout_branch(self.primary_branches["main"])
+        _ = self._checkout_branch(self.primary_branches["main"])
 
     def _checkout_branch(self, branch):
         self.log.debug(f"Checking out {branch}...")
         self.log.debug("pulling upstream...")
         remote_id = self.repoobj.lookup_reference(f"refs/remotes/origin/{branch}")
         self.repoobj.checkout(remote_id, strategy=pygit2.GIT_CHECKOUT_ALLOW_CONFLICTS)
+        return remote_id
 
     def list_branches(self):
         # count the two branches we'll otherwise skip
@@ -54,7 +55,9 @@ class Repo(object):
         for branch in list(
             set([self.primary_branches["main"], self.primary_branches["release"]])
         ):
-            yield branch
+            remote_id = self.repoobj.lookup_reference(f"refs/remotes/origin/{branch}").target
+            commit = self.repoobj.get(remote_id)
+            yield (branch, commit.commit_time)
         for branch in self.repoobj.branches:
             branch_name = branch.replace("origin/", "")
             if branch_name in [
@@ -64,29 +67,36 @@ class Repo(object):
             ]:
                 continue
             branch_count += 1
-            yield branch_name
-        self.log.debug(f"Found {branch_count} branches in the repo")
+            remote_id = self.repoobj.lookup_reference(f"refs/remotes/origin/{branch_name}").target
+            commit = self.repoobj.get(remote_id)
+            yield (branch_name, commit.commit_time)
+        self.log.info(f"Found {branch_count} branches in the repo")
 
-    def _get_branch_ids(self):
-        for branch_name in list(self.repoobj.branches.remote):
-            branch = self.repoobj.branches.get(branch_name)
-            latest_commit_id = branch.target
-            yield (branch_name, latest_commit_id)
-
-    def collect_commit_log(self):
+    def branch_commit_log(self, branch_name):
         self.log.debug("Loading commit log...")
-        self._checkout_branch(self.primary_branches["main"])
-        for branch_name in self.list_branches():
-            commit_count = 0
-            self.log.info(f"Collecting from branch {branch_name}")
+        main_branch_id = self._checkout_branch(self.primary_branches["main"]).target
+        commit_count = 0
+        """
+        To make sure we get the right commit count/etc., we should always
+        work with the upstream branches, not local checkouts
+        """
+        if not branch_name.startswith("origin/"):
             branch = self.repoobj.branches.get(f"origin/{branch_name}")
-            latest_commit_id = branch.target
-            walker = self.repoobj.walk(latest_commit_id, pygit2.GIT_SORT_REVERSE)
+        else:
+            branch = self.repoobj.branches.get(branch_name)
+        latest_commit_id = branch.target
+        try:
+            walker = self.repoobj.walk(latest_commit_id, pygit2.GIT_SORT_TIME)
+        except ValueError:
+            pass
+        else:
+            self.log.debug(f"{branch_name=}, {latest_commit_id=}")
             """
             using this on a branch should only return commits to that branch
-            Unfortunately, it does not
+            There may be _some_ overlap, but we'll be close
             """
-            walker.simplify_first_parent()
+            if branch_name != self.primary_branches["main"]:
+                walker.hide(main_branch_id)
             for commit in walker:
                 commit_count += 1
                 # commit objects are C objects, need to convert types
@@ -94,10 +104,9 @@ class Repo(object):
                     "hash": str(commit.hex),
                     "author": str(commit.author),
                     "time": int(commit.commit_time),
-                    "message": str(commit.message),
                     "branch": branch_name,
                 }
-                self.log.info(f"Obj: {commitobj}, Parents: {commit.parents}")
+                # self.log.info(f"Obj: {commitobj}, Parents: {commit.parents}")
                 # self.log.info(pprint.pformat(commitobj))
-                # yield commitobj
-            self.log.info(f"Found {commit_count} in {branch_name}")
+                yield commitobj
+            self.log.debug(f"Found {commit_count} in {branch_name}")

@@ -247,7 +247,6 @@ class GithubAccess(object):
         :returns: None
         """
         self._set_collection_date(base_date, window)
-        self.load_commits(base_date, window)
         self.load_branches(base_date, window)
         self.load_repo_stats(base_date, window)
         self.load_pull_requests(base_date, window)
@@ -379,51 +378,97 @@ class GithubAccess(object):
         """
         self._set_collection_date(base_date, window)
         td = base_date - timedelta(days=window)
+        td_ts = td.timestamp()
+        base_ts = base_date.timestamp()
         starttime = time.time()
         self.log.info("Loading branch details...")
         url = f"/repos/{self.repo_name}/branches"
-        for branch in self.repo.list_branches():
-            url = f"/repos/{self.repo_name}/branches/{branch}"
-            # because we return generators...but there's only one branch requested
-            data = [q for q in self._github_query(url)]
-            if data:
-                data = data[0]
-            if not data or not data["commit"]["commit"]["author"]["name"]:
-                self.stats["branches"]["total_empty_branches"] += 1
-                self.log.debug(f"{branch} is missing branch information. Skipping...")
-                continue
-            # the best we can do (for now) is get the most recent commit time
-            updated = data["commit"]["commit"]["author"]["date"]
-            dt_updated = datetime.strptime(updated, "%Y-%m-%dT%H:%M:%SZ")
-            self.log.debug(f"{branch} updated at {dt_updated}")
-            if dt_updated > base_date:
-                self.log.debug(f"Branch {branch} was created in the future. Skipping.")
-                continue
+        self.stats["commits"]["collection_time"] = time.time() - starttime
+        for branchdata in self.repo.list_branches():
+            branch, last_commit = branchdata
+            self.log.debug(f"Processing meta data for {branch}")
             self.stats["branches"]["total_branches"] += 1
-            if data["protected"]:
-                self.stats["branches"]["protected_branches"] += 1
-            if data["commit"].get("author", None):
-                author = self._cache_user_login(data["commit"]["author"]["login"])
-            else:
-                """
-                Some commits (typically older ones) don't have author data
-                """
-                author = data["commit"]["commit"]["author"]["name"]
-                if author not in self.stats["users"]:
-                    self.log.debug(f"Creating new user {author} for {branch=}")
-                    self.stats["users"][author] = deepcopy(user_schema)
-                    self.user_login_cache["names"][author] = author
-                    self.user_login_cache["logins"][author] = author
-            self.stats["users"][author]["total_branches"] += 1
-            # 2020-12-30T03:19:29Z (RFC3339)
-            if dt_updated < base_date and dt_updated > td:
+            if branch == self.main_branch:
+                self.stats["general"]["main_branch_commits"] += 1
+            if td_ts < int(last_commit) < base_ts:
                 self.stats["branches"]["total_window_branches"] += 1
-                self.stats["users"][author]["total_window_branches"] += 1
-                self.log.debug(f"{branch=}: created {dt_updated}")
+
+            """
+            Branch author data is harder to suss out from git
+            operations alone, so we'll pull that data from the
+            api. Along with whether the branch is protected,
+            which is _definitely_ not marked in git itself
+            """
+            url = f"/repos/{self.repo_name}/branches/{branch}"
+            try:
+                data = [q for q in self._github_query(url)]
+                if data:
+                    data = data[0]
+            except Exception:
+                pass
+            else:
+                if not data or not data["commit"]["commit"]["author"]["name"]:
+                    self.stats["branches"]["total_empty_branches"] += 1
+                    self.log.debug(f"{branch} is missing branch information. Skipping...")
+                    continue
+                # the best we can do (for now) is get the most recent commit time
+                updated = data["commit"]["commit"]["author"]["date"]
+                dt_updated = datetime.strptime(updated, "%Y-%m-%dT%H:%M:%SZ")
+                self.log.debug(f"{branch} updated at {dt_updated}")
+                if dt_updated > base_date:
+                    self.log.debug(f"Branch {branch} was created in the future. Skipping.")
+                    continue
+                if data["protected"]:
+                    self.stats["branches"]["protected_branches"] += 1
+                if data["commit"].get("author", None):
+                    author = self._cache_user_login(data["commit"]["author"]["login"])
+                    self.stats["users"][author]["total_branches"] += 1
+                    # 2020-12-30T03:19:29Z (RFC3339)
+                    if dt_updated < base_date and dt_updated > td:
+                        self.stats["users"][author]["total_window_branches"] += 1
+                        self.log.debug(f"{branch=}: created {dt_updated}")
+            self.log.debug(f"Processing commits to {branch}")
+            for commit in self.repo.branch_commit_log(branch):
+                if commit["time"] > base_ts:
+                    self.log.debug(
+                        f"{commit['hash']} for {commit['author']} is in the future. Skipping"
+                    )
+                    continue
+                try:
+                    user = self._cache_user_name(commit["author"].split(" <")[0])
+                except Exception:
+                    user = "unknown"
+                self.stats["commits"]["total_commits"] += 1
+                self.stats["users"][user]["total_commits"] += 1
+                if commit["time"] > self.stats["users"][user]["last_commit_time"]:
+                    self.stats["users"][user]["last_commit_time"] = commit["time"]
+                if td_ts < commit["time"] < base_ts:
+                    self.stats["commits"]["window_commits"] += 1
+                    self.stats["users"][user]["total_window_commits"] += 1
+                if branch in self.stats["commits"]["branch_commits"]:
+                    self.stats["commits"]["branch_commits"][branch][
+                        "total_commits"
+                    ] += 1
+                    if td_ts < commit["time"] < base_ts:
+                        self.stats["commits"]["branch_commits"][branch][
+                            "window_commits"
+                        ] += 1
+                else:
+                    self.stats["commits"]["branch_commits"][branch] = {
+                        "total_commits": 1,
+                        "window_commits": 0,
+                    }
+                    if td_ts < commit["time"] < base_ts:
+                        self.stats["commits"]["branch_commits"][branch][
+                            "window_commits"
+                        ] += 1
+
         self.stats["branches"]["collection_time"] = time.time() - starttime
         self.log.info(
             f"Loaded branch details in {self.stats['branches']['collection_time']} seconds"
         )
+        self.log.info(pprint.pformat(self.stats["commits"]))
+        exit(1)
 
     def load_repo_stats(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
         """
@@ -667,30 +712,6 @@ class GithubAccess(object):
             f"Loaded release details in {self.stats['releases']['collection_time']} seconds"
         )
 
-    def load_commits(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
-        self.log.info("Loading commit info...")
-        starttime = time.time()
-        td = (base_date - timedelta(days=window)).timestamp()
-        base_ts = base_date.timestamp()
-        for commit in self.repo.commit_log():
-            if commit["time"] > base_ts:
-                self.log.debug(
-                    f"{commit['message']} for {commit['author']} is in the future. Skipping"
-                )
-                continue
-            try:
-                user = self._cache_user_name(commit["author"].split(" <")[0])
-            except Exception:
-                user = "unknown"
-            self.stats["commits"]["total_commits"] += 1
-            self.stats["users"][user]["total_commits"] += 1
-            if commit["time"] > self.stats["users"][user]["last_commit_time"]:
-                self.stats["users"][user]["last_commit_time"] = commit["time"]
-            if td < commit["time"] < base_ts:
-                self.stats["commits"]["window_commits"] += 1
-                self.stats["users"][user]["total_window_commits"] += 1
-        self.stats["commits"]["collection_time"] = time.time() - starttime
-
     def load_workflow_runs(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
         """
         Parse through workflow runs and collect results
@@ -782,35 +803,6 @@ class GithubAccess(object):
                 self.stats["workflows"]["workflows"][workflow]["last_run"] = run[
                     "run_number"
                 ]
-
-            # Track general commit data
-            branch = run["head_branch"]
-            if not branch:
-                self.log.debug(f"Empty branch name for: {pprint.pformat(run)}")
-            else:
-                if branch in self.stats["commits"]["branch_commits"]:
-                    self.stats["commits"]["branch_commits"][branch][
-                        "total_commits"
-                    ] += 1
-                    if dt_created > td and dt_created < base_date:
-                        self.stats["commits"]["branch_commits"][branch][
-                            "window_commits"
-                        ] += 1
-                else:
-                    self.stats["commits"]["branch_commits"][branch] = {
-                        "total_commits": 1,
-                        "window_commits": 0,
-                    }
-                    if dt_created > td and dt_created < base_date:
-                        self.stats["commits"]["branch_commits"][branch][
-                            "window_commits"
-                        ] += 1
-                # Track tag matching branches
-                for name, pattern in self.tag_matches.items():
-                    if pattern.match(branch):
-                        self.stats["general"]["tag_matches"][name] += 1
-            if branch == self.main_branch:
-                self.stats["general"]["main_branch_commits"] += 1
 
         """
         calculate percentage of runs executed in this window
