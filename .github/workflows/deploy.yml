@@ -15,17 +15,11 @@ jobs:
         run: echo ::set-output name=TAG::$(echo $GITHUB_REF | cut -d / -f 3)
       - name: Check out code
         uses: actions/checkout@v3
-      - name: Build
-        run: make build
       - name: login to GCP repo
         uses: docker/login-action@v1
         with:
           registry: gcr.io
           username: _json_key
           password: ${{ secrets.DEPLOY_KEY_FILE }}
-      - name: Deploy
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          tags: gcr.io/civic-eagle-enview-dev/github-stat-collector:${{ steps.get_tag.outputs.TAG }},gcr.io/civic-eagle-enview-dev/github-stat-collector:latest
-          push: true
+      - name: Build
+        run: bash util/build.sh
