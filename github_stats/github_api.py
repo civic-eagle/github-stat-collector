@@ -499,9 +499,6 @@ class GithubAccess(object):
         self.log.info(
             f"Loaded branch details in {self.stats['branches']['collection_time']} seconds"
         )
-        self.log.info(self.stats["users"])
-        self.log.info(self.stats["branches"])
-        exit(1)
 
     def load_repo_stats(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
         """
