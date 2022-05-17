@@ -35,7 +35,9 @@ class Repo(object):
         progress = remote.fetch(callbacks=self.callbacks)
         while progress.received_objects < progress.total_objects:
             time.sleep(1)
-        self.main_branch_id = self._checkout_branch(self.primary_branches["main"]).target
+        self.main_branch_id = self._checkout_branch(
+            self.primary_branches["main"]
+        ).target
 
     def _checkout_branch(self, branch):
         self.log.debug(f"Checking out {branch}...")

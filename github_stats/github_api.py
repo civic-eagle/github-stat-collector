@@ -410,7 +410,7 @@ class GithubAccess(object):
                         "total_commits"
                     ] += 1
                     if td_ts < commit["time"] < base_ts:
-                        self.log.info(f"Window commit: {pprint.pformat(commit)}")
+                        self.log.debug(f"Window commit: {pprint.pformat(commit)}")
                         self.stats["commits"]["branch_commits"][branch][
                             "window_commits"
                         ] += 1
