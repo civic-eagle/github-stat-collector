@@ -1,16 +1,21 @@
 FROM python:3.10-slim
 
 RUN apt-get update -qq \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends ca-certificates build-essential \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip install --disable-pip-version-check --no-cache-dir -q poetry crcmod
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends ca-certificates build-essential \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/* \
+  && pip install --disable-pip-version-check --no-cache-dir -q poetry crcmod
 
 WORKDIR /app
 COPY pyproject.toml .
 COPY poetry.lock .
 RUN poetry install -q --no-dev \
-  && rm -r /root/.cache/pypoetry/cache /root/.cache/pypoetry/artifacts/
+  && rm -r /root/.cache/
+
+RUN apt-get remove -y -qq build-essential \
+  && apt-get autoremove -y -qq \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
 
 COPY github_stats/ github_stats/
 COPY collect-stats.py .
