@@ -6,12 +6,12 @@ import time
 
 class Repo(object):
     def __init__(self, config):
+        self.log = logging.getLogger("github-stats.repo")
         auth_token = os.environ.get("GITHUB_TOKEN", None)
         if not auth_token:
             auth_token = config["repo"].get("github_token", None)
         if not auth_token:
             raise Exception("Cannot find Github auth token in environment or config")
-        self.log = logging.getLogger("github-stats.repo-loading")
 
         self.callbacks = pygit2.RemoteCallbacks(
             pygit2.UserPass("x-access-token", auth_token)
@@ -35,11 +35,10 @@ class Repo(object):
         progress = remote.fetch(callbacks=self.callbacks)
         while progress.received_objects < progress.total_objects:
             time.sleep(1)
-        _ = self._checkout_branch(self.primary_branches["main"])
+        self.main_branch_id = self._checkout_branch(self.primary_branches["main"]).target
 
     def _checkout_branch(self, branch):
         self.log.debug(f"Checking out {branch}...")
-        self.log.debug("pulling upstream...")
         remote_id = self.repoobj.lookup_reference(f"refs/remotes/origin/{branch}")
         self.repoobj.checkout(remote_id, strategy=pygit2.GIT_CHECKOUT_ALLOW_CONFLICTS)
         return remote_id
@@ -78,7 +77,6 @@ class Repo(object):
 
     def branch_commit_log(self, branch_name):
         self.log.debug("Loading commit log...")
-        main_branch_id = self._checkout_branch(self.primary_branches["main"]).target
         commit_count = 0
         """
         To make sure we get the right commit count/etc., we should always
@@ -100,7 +98,7 @@ class Repo(object):
             There may be _some_ overlap, but we'll be close
             """
             if branch_name != self.primary_branches["main"]:
-                walker.hide(main_branch_id)
+                walker.hide(self.main_branch_id)
             for commit in walker:
                 commit_count += 1
                 # commit objects are C objects, need to convert types
@@ -113,4 +111,4 @@ class Repo(object):
                 # self.log.info(f"Obj: {commitobj}, Parents: {commit.parents}")
                 # self.log.info(pprint.pformat(commitobj))
                 yield commitobj
-            self.log.debug(f"Found {commit_count} in {branch_name}")
+            self.log.debug(f"Found {commit_count=} in {branch_name}")

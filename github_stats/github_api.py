@@ -247,6 +247,7 @@ class GithubAccess(object):
         :returns: None
         """
         self._set_collection_date(base_date, window)
+        self.load_commits(base_date, window)
         self.load_branches(base_date, window)
         self.load_repo_stats(base_date, window)
         self.load_pull_requests(base_date, window)
@@ -366,6 +367,68 @@ class GithubAccess(object):
             f"Loaded pull requests in {self.stats['pull_requests']['collection_time']} seconds"
         )
 
+    def load_commits(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
+        """
+        Collect commit log from pygit2
+        This will not be a perfect representation of commits, but should
+        give us *some* sense of who's working on what
+
+        While this does essentially mirror some behavior in load_branches, we should
+        keep the two functions separate so we _can_ alter them individually later
+
+        :returns: None
+        """
+        self._set_collection_date(base_date, window)
+        td = base_date - timedelta(days=window)
+        td_ts = td.timestamp()
+        base_ts = base_date.timestamp()
+        starttime = time.time()
+        self.log.info("Loading commit details...")
+        self.stats["commits"]["collection_time"] = time.time() - starttime
+        for branchdata in self.repo.list_branches():
+            branch, last_commit = branchdata
+            self.log.debug(f"Processing commits to {branch}")
+            for commit in self.repo.branch_commit_log(branch):
+                if commit["time"] > base_ts:
+                    self.log.debug(
+                        f"{commit['hash']} for {commit['author']} is in the future. Skipping"
+                    )
+                    continue
+                try:
+                    user = self._cache_user_name(commit["author"].split(" <")[0])
+                except Exception:
+                    user = "unknown"
+                self.stats["commits"]["total_commits"] += 1
+                self.stats["users"][user]["total_commits"] += 1
+                if commit["time"] > self.stats["users"][user]["last_commit_time"]:
+                    self.stats["users"][user]["last_commit_time"] = commit["time"]
+                if td_ts < commit["time"] < base_ts:
+                    self.stats["commits"]["window_commits"] += 1
+                    self.stats["users"][user]["total_window_commits"] += 1
+                if branch in self.stats["commits"]["branch_commits"]:
+                    self.stats["commits"]["branch_commits"][branch][
+                        "total_commits"
+                    ] += 1
+                    if td_ts < commit["time"] < base_ts:
+                        self.log.info(f"Window commit: {pprint.pformat(commit)}")
+                        self.stats["commits"]["branch_commits"][branch][
+                            "window_commits"
+                        ] += 1
+                else:
+                    self.stats["commits"]["branch_commits"][branch] = {
+                        "total_commits": 1,
+                        "window_commits": 0,
+                    }
+                    if td_ts < commit["time"] < base_ts:
+                        self.stats["commits"]["branch_commits"][branch][
+                            "window_commits"
+                        ] += 1
+
+        self.stats["commits"]["collection_time"] = time.time() - starttime
+        self.log.info(
+            f"Loaded commit history in {self.stats['commits']['collection_time']} seconds"
+        )
+
     def load_branches(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
         """
         Because getting branch details requires a second
@@ -431,47 +494,13 @@ class GithubAccess(object):
                     if dt_updated < base_date and dt_updated > td:
                         self.stats["users"][author]["total_window_branches"] += 1
                         self.log.debug(f"{branch=}: created {dt_updated}")
-            self.log.debug(f"Processing commits to {branch}")
-            for commit in self.repo.branch_commit_log(branch):
-                if commit["time"] > base_ts:
-                    self.log.debug(
-                        f"{commit['hash']} for {commit['author']} is in the future. Skipping"
-                    )
-                    continue
-                try:
-                    user = self._cache_user_name(commit["author"].split(" <")[0])
-                except Exception:
-                    user = "unknown"
-                self.stats["commits"]["total_commits"] += 1
-                self.stats["users"][user]["total_commits"] += 1
-                if commit["time"] > self.stats["users"][user]["last_commit_time"]:
-                    self.stats["users"][user]["last_commit_time"] = commit["time"]
-                if td_ts < commit["time"] < base_ts:
-                    self.stats["commits"]["window_commits"] += 1
-                    self.stats["users"][user]["total_window_commits"] += 1
-                if branch in self.stats["commits"]["branch_commits"]:
-                    self.stats["commits"]["branch_commits"][branch][
-                        "total_commits"
-                    ] += 1
-                    if td_ts < commit["time"] < base_ts:
-                        self.stats["commits"]["branch_commits"][branch][
-                            "window_commits"
-                        ] += 1
-                else:
-                    self.stats["commits"]["branch_commits"][branch] = {
-                        "total_commits": 1,
-                        "window_commits": 0,
-                    }
-                    if td_ts < commit["time"] < base_ts:
-                        self.stats["commits"]["branch_commits"][branch][
-                            "window_commits"
-                        ] += 1
 
         self.stats["branches"]["collection_time"] = time.time() - starttime
         self.log.info(
             f"Loaded branch details in {self.stats['branches']['collection_time']} seconds"
         )
-        self.log.info(pprint.pformat(self.stats["commits"]))
+        self.log.info(self.stats["users"])
+        self.log.info(self.stats["branches"])
         exit(1)
 
     def load_repo_stats(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
