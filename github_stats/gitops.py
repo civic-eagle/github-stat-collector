@@ -136,7 +136,6 @@ class Repo(object):
             # skip super old timestamps that have bad tags/etc.
             if timestamp < tag_matches[0][1]:
                 continue
-            self.log.debug(f"Finding release for {commit_hex}")
             for release in tag_matches:
                 if commit_hex == release[0]:
                     self.log.debug(f"{commit_hex} matches {release}, skipping")
@@ -152,7 +151,7 @@ class Repo(object):
                 self.log.debug(f"No release found for {commit_hex}")
                 unreleased_commits += 1
         avg_commit_time = avg_commit_time / len(tag_matches)
-        self.log.info(f"{avg_commit_time=}, {unreleased_commits=}")
+        self.log.debug(f"{avg_commit_time=}, {unreleased_commits=}")
         return avg_commit_time, unreleased_commits
 
     def branch_commit_log(self, branch_name):
