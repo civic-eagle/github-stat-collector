@@ -4,6 +4,10 @@
 
 This tool relies on `poetry` for dependency management. If you already have `poetry` installed on your system, simply `poetry update` to pull in all needed dependencies.
 
+## Google/Stackdriver Output
+
+Leveraging the Google output requires `poetry add opencensus opencensus-ext-stackdriver`. We normally keep these dependencies out of the program to significantly reduce install size and build time. You _will_ have problems with this output as Stackdriver doesn't allow negative numbers in custom metrics.
+
 # Metrics formatting
 
 We'll adhere to the OpenMetrics standard as much as possible:
