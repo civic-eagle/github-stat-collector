@@ -1,4 +1,5 @@
 [![CI](https://github.com/civic-eagle/github-stat-collector/actions/workflows/ci.yaml/badge.svg)](https://github.com/civic-eagle/github-stat-collector/actions/workflows/ci.yaml)
+[![scheduled stat collection](https://github.com/civic-eagle/github-stat-collector/actions/workflows/run.yml/badge.svg)](https://github.com/civic-eagle/github-stat-collector/actions/workflows/run.yml)
 
 # Installing
 
