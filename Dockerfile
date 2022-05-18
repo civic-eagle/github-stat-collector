@@ -1,4 +1,5 @@
-FROM python:3.10-slim
+# can't use alpine image until libgit2 >= 1.4
+FROM python:3-slim
 
 RUN apt-get update -qq \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends ca-certificates build-essential \
