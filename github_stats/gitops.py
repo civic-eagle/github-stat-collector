@@ -1,6 +1,7 @@
 import logging
 import os
 import pygit2
+import regex
 import time
 
 
@@ -19,9 +20,19 @@ class Repo(object):
         self.repo_url = config["repo"]["clone_url"]
         self.repo_path = f"{config['repo']['folder']}/{config['repo']['name']}"
         self.primary_branches = config["repo"]["branches"]
+        self.tag_matches = {
+            tag["name"]: regex.compile(f".*{tag['pattern']}.*")
+            for tag in config["repo"].get("tag_patterns", list())
+        }
         self._prep_repo()
 
     def _prep_repo(self):
+        """
+        Clone repo if it doesn't exist
+        and otherwise update the main repo to current
+
+        :returns: None
+        """
         if not pygit2.discover_repository(self.repo_path):
             self.log.info(f"Creating {self.repo_path}...")
             pygit2.clone_repository(
@@ -40,12 +51,23 @@ class Repo(object):
         ).target
 
     def _checkout_branch(self, branch):
+        """
+        Checkout a particular branch
+        and return the tracking object
+
+        :returns: branch object
+        """
         self.log.debug(f"Checking out {branch}...")
         remote_id = self.repoobj.lookup_reference(f"refs/remotes/origin/{branch}")
         self.repoobj.checkout(remote_id, strategy=pygit2.GIT_CHECKOUT_ALLOW_CONFLICTS)
         return remote_id
 
     def list_branches(self):
+        """
+        Generator that discovers all branches in the repo
+
+        :returns: tuple of branch name and initial commit time
+        """
         # count the two branches we'll otherwise skip
         if self.primary_branches["main"] != self.primary_branches["release"]:
             branch_count = 2
@@ -75,10 +97,73 @@ class Repo(object):
             ).target
             commit = self.repoobj.get(remote_id)
             yield (branch_name, commit.commit_time)
-        self.log.info(f"Found {branch_count} branches in the repo")
+        self.log.debug(f"Found {branch_count} branches in the repo")
+
+    def commit_release_matching(self):
+        """
+        1. Loop through a sorted list of all commits to the repo
+        2. find the nearest tagged release to each individual commit
+        3. diff the time between the commit and the release
+        4. do a rolling average on number of releases
+
+        :returns: None
+        """
+        """
+        find all matching tags
+        and convert them to their corresponding commit objects
+        This let's us do an OID comparison between each commit
+        and the tag references
+        """
+        tag_matches = [
+            (
+                str(self.repoobj[self.repoobj.references[r].target].hex),
+                int(self.repoobj[self.repoobj.references[r].target].commit_time),
+            )
+            for r in self.repoobj.references
+            if any(v.match(r) for v in self.tag_matches.values())
+            and self.repoobj.references[r].type == pygit2.GIT_REF_OID
+        ]
+        # sort by commit timestamp
+        tag_matches.sort(key=lambda x: x[1])
+        avg_commit_time = 0
+        unreleased_commits = 0
+        walker = self.repoobj.walk(
+            self.main_branch_id, pygit2.GIT_SORT_TOPOLOGICAL | pygit2.GIT_SORT_REVERSE
+        )
+        for commit in walker:
+            timestamp = int(commit.commit_time)
+            commit_hex = str(commit.hex)
+            # skip super old timestamps that have bad tags/etc.
+            if timestamp < tag_matches[0][1]:
+                continue
+            self.log.debug(f"Finding release for {commit_hex}")
+            for release in tag_matches:
+                if commit_hex == release[0]:
+                    self.log.debug(f"{commit_hex} matches {release}, skipping")
+                    break
+                elif timestamp > release[1]:
+                    continue
+                elif timestamp <= release[1]:
+                    self.log.debug(f"{commit_hex} belongs to {release}")
+                    # diff between the release time and the commit time
+                    avg_commit_time += release[1] - timestamp
+                    break
+            else:
+                self.log.debug(f"No release found for {commit_hex}")
+                unreleased_commits += 1
+        avg_commit_time = avg_commit_time / len(tag_matches)
+        self.log.info(f"{avg_commit_time=}, {unreleased_commits=}")
+        return avg_commit_time, unreleased_commits
 
     def branch_commit_log(self, branch_name):
-        self.log.debug("Loading commit log...")
+        """
+        Track all commits on a particular branch
+        This doesn't work perfectly as merged branches
+        are tougher to properly track
+
+        :returns: generator of commit objects for a branch
+        """
+        self.log.debug(f"Loading commit log for {branch_name}...")
         commit_count = 0
         """
         To make sure we get the right commit count/etc., we should always
