@@ -28,6 +28,7 @@ class StatsOutput(object):
         call this within an overridden subobject like so:
 
         formatted_stats = super().format_stats(stats_object)
+
         Then we can process any additional stats or formatting
         changes needed for individual outputs.
 
@@ -449,12 +450,16 @@ class StatsOutput(object):
         td = (
             stats_object["collection_date"] - timedelta(days=stats_object["window"])
         ).timestamp()
+        dropped_users = 0
+        accepted_users = 0
         for user, data in stats_object.get("users", {}).items():
             if data["last_commit_time"] < td:
                 self.log.warning(
                     f"{user}'s last commit {data['last_commit_time']} outside window {td}. Dropping"
                 )
+                dropped_users += 1
                 continue
+            accepted_users += 1
             for wkstat, desc in user_descriptions.items():
                 stat = deepcopy(self.tmpobj)
                 stat["name"] = f"users_{wkstat}"
@@ -482,6 +487,18 @@ class StatsOutput(object):
                         "description"
                     ] = "count of runs for a workflow by a user by workflow result"
                     formatted_stats.append(stat)
+        stat = deepcopy(self.tmpobj)
+        stat["name"] = "users_dropped"
+        stat["value"] = dropped_users
+        stat[
+            "description"
+        ] = "Number of user objects dropped because their commits were outside our window"
+        formatted_stats.append(stat)
+        stat = deepcopy(self.tmpobj)
+        stat["name"] = "users_accepted"
+        stat["value"] = dropped_users
+        stat["description"] = "Number of user objects with commits in the window"
+        formatted_stats.append(stat)
 
         """
         "Punch card" stats:
