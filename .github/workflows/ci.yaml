@@ -41,15 +41,3 @@ jobs:
           echo "processing ${filename}"
           docker run --rm -v "$(pwd):/mnt" koalaman/shellcheck:latest -x "${filename}"
           done < <(find . -type f -name "*.sh" ! -path "*/.git/*" -print0)
-
-#  build:
-#    name: build container
-#    runs-on: self-hosted
-#    if: "github.ref == 'refs/heads/main'"
-#    needs:
-#      - linting
-#    steps:
-#      - name: Checkout code
-#        uses: actions/checkout@v2
-#      - name: run build script
-#        run: bash util/build.sh
