@@ -398,7 +398,6 @@ class GithubAccess(object):
                     user = self._cache_user_name(commit["author"].split(" <")[0])
                 except Exception:
                     user = "unknown"
-                self.stats["commits"]["total_commits"] += 1
                 self.stats["users"][user]["total_commits"] += 1
                 if commit["time"] > self.stats["users"][user]["last_commit_time"]:
                     self.stats["users"][user]["last_commit_time"] = commit["time"]
@@ -424,10 +423,11 @@ class GithubAccess(object):
                             "window_commits"
                         ] += 1
 
-        avg_commit_time, unreleased_commits = self.repo.commit_release_matching()
+        avg_commit_time, unreleased_commits, total_commits = self.repo.commit_release_matching()
         self.stats["commits"]["avg_commit_time"] = avg_commit_time
         self.stats["commits"]["unreleased_commits"] = unreleased_commits
         self.stats["commits"]["collection_time"] = time.time() - starttime
+        self.stats["commits"]["total_commits"] = total_commits
         self.log.info(
             f"Loaded commit history in {self.stats['commits']['collection_time']} seconds"
         )

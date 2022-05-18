@@ -127,12 +127,14 @@ class Repo(object):
         tag_matches.sort(key=lambda x: x[1])
         avg_commit_time = 0
         unreleased_commits = 0
+        commits = 0
         walker = self.repoobj.walk(
             self.main_branch_id, pygit2.GIT_SORT_TOPOLOGICAL | pygit2.GIT_SORT_REVERSE
         )
         for commit in walker:
             timestamp = int(commit.commit_time)
             commit_hex = str(commit.hex)
+            commits += 1
             # skip super old timestamps that have bad tags/etc.
             if timestamp < tag_matches[0][1]:
                 continue
@@ -151,8 +153,8 @@ class Repo(object):
                 self.log.debug(f"No release found for {commit_hex}")
                 unreleased_commits += 1
         avg_commit_time = avg_commit_time / len(tag_matches)
-        self.log.debug(f"{avg_commit_time=}, {unreleased_commits=}")
-        return avg_commit_time, unreleased_commits
+        self.log.debug(f"{avg_commit_time=}, {unreleased_commits=}, {commits=}")
+        return avg_commit_time, unreleased_commits, commits
 
     def branch_commit_log(self, branch_name):
         """
