@@ -22,4 +22,4 @@ jobs:
           username: _json_key
           password: ${{ secrets.DEPLOY_KEY_FILE }}
       - name: Build
-        run: bash util/build.sh
+        run: TAG=$TAG bash util/build.sh

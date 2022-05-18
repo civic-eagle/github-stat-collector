@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TAG=$(date +%s)
+TAG=${TAG:-$(date +%s)}
 ROOT="gcr.io"
 PROJECT="civic-eagle-enview-dev"
 
