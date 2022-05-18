@@ -24,6 +24,8 @@ repo:
     "User 1": user1
   broken_users:
     - user2@test.com
+  # filter out users from tracking if they only have old commits
+  user_time_filter: False
   clone_url: https://github.com/organization/repo
   folder: repos
 

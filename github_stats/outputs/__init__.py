@@ -16,6 +16,8 @@ class StatsOutput(object):
         self.main_branch = config["repo"]["branches"].get("main", "main")
         self.release_branch = config["repo"]["branches"].get("release", "main")
         self.float_measurements = ["percent", "gauge"]
+        self.broken_users = config["repo"].get("broken_users", [])
+        self.user_time_filter = config["repo"].get("user_time_filter", False)
 
     def format_stats(self, stats_object):
         """
@@ -464,7 +466,12 @@ class StatsOutput(object):
         dropped_users = 0
         accepted_users = 0
         for user, data in stats_object.get("users", {}).items():
-            if data["last_commit_time"] < td:
+            if user in self.broken_users:
+                self.log.warning(
+                    f"{user}'s marked 'broken', skipping tracking their commits"
+                )
+                continue
+            if self.user_time_filter and data["last_commit_time"] < td:
                 self.log.warning(
                     f"{user}'s last commit {data['last_commit_time']} outside window {td}. Dropping"
                 )
