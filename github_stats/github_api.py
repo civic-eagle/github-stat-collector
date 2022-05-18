@@ -424,6 +424,9 @@ class GithubAccess(object):
                             "window_commits"
                         ] += 1
 
+        avg_commit_time, unreleased_commits = self.repo.commit_release_matching()
+        self.stats["commits"]["avg_commit_time"] = avg_commit_time
+        self.stats["commits"]["unreleased_commits"] = unreleased_commits
         self.stats["commits"]["collection_time"] = time.time() - starttime
         self.log.info(
             f"Loaded commit history in {self.stats['commits']['collection_time']} seconds"

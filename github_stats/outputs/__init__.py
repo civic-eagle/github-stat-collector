@@ -65,11 +65,24 @@ class StatsOutput(object):
         stat["value"] = commits["total_commits"]
         stat["description"] = "All commits for the project"
         stat = deepcopy(self.tmpobj)
+        formatted_stats.append(stat)
         stat["name"] = "window_commits_total"
         stat["value"] = commits["window_commits"]
         stat[
             "description"
         ] = "All commits detected within the initial collection time range"
+        formatted_stats.append(stat)
+        stat = deepcopy(self.tmpobj)
+        stat["name"] = "avg_commit_release_time_secs"
+        stat["value"] = commits["avg_commit_time"]
+        stat["description"] = "Average time between commit and release"
+        formatted_stats.append(stat)
+        stat = deepcopy(self.tmpobj)
+        stat["name"] = "unreleased_commits_count"
+        stat["value"] = commits["unreleased_commits"]
+        stat[
+            "description"
+        ] = "Any commit that isn't matched to a release"
         formatted_stats.append(stat)
         for branchname, values in commits["branch_commits"].items():
             stat = deepcopy(self.tmpobj)
