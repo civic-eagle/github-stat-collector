@@ -63,12 +63,18 @@ class StatsOutput(object):
         """
         commits = stats_object.get("commits", {})
         stat = deepcopy(self.tmpobj)
+        stat["name"] = "commits_collection_time_secs"
+        stat["type"] = "gauge"
+        stat["value"] = commits["collection_time"]
+        stat["description"] = "Time taken to collect commit stats"
+        formatted_stats.append(stat)
+        stat = deepcopy(self.tmpobj)
         stat["name"] = "commits_total"
         stat["type"] = "count"
         stat["value"] = commits["total_commits"]
         stat["description"] = "All commits for the project"
-        stat = deepcopy(self.tmpobj)
         formatted_stats.append(stat)
+        stat = deepcopy(self.tmpobj)
         stat["name"] = "window_commits_total"
         stat["type"] = "gauge"
         stat["value"] = commits["window_commits"]
