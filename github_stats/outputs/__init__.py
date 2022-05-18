@@ -64,11 +64,13 @@ class StatsOutput(object):
         commits = stats_object.get("commits", {})
         stat = deepcopy(self.tmpobj)
         stat["name"] = "commits_total"
+        stat["type"] = "count"
         stat["value"] = commits["total_commits"]
         stat["description"] = "All commits for the project"
         stat = deepcopy(self.tmpobj)
         formatted_stats.append(stat)
         stat["name"] = "window_commits_total"
+        stat["type"] = "gauge"
         stat["value"] = commits["window_commits"]
         stat[
             "description"
@@ -76,11 +78,13 @@ class StatsOutput(object):
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
         stat["name"] = "avg_commit_release_time_secs"
+        stat["type"] = "gauge"
         stat["value"] = commits["avg_commit_time"]
         stat["description"] = "Average time between commit and release"
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
         stat["name"] = "unreleased_commits_count"
+        stat["type"] = "gauge"
         stat["value"] = commits["unreleased_commits"]
         stat["description"] = "Any commit that isn't matched to a release"
         formatted_stats.append(stat)
@@ -88,11 +92,13 @@ class StatsOutput(object):
             stat = deepcopy(self.tmpobj)
             stat["name"] = "branch_commits_total"
             stat["value"] = values["total_commits"]
+            stat["type"] = "count"
             stat["description"] = "Count of commits to a specific branch"
             stat["labels"]["branch"] = branchname
             formatted_stats.append(stat)
             stat = deepcopy(self.tmpobj)
             stat["name"] = "branch_window_commits_total"
+            stat["type"] = "gauge"
             stat["value"] = values["window_commits"]
             stat["description"] = "Count of commits to a specific branch in time range"
             stat["labels"]["branch"] = branchname
@@ -101,12 +107,14 @@ class StatsOutput(object):
         general = stats_object.get("general", {})
         stat = deepcopy(self.tmpobj)
         stat["name"] = "main_branch_commits_total"
+        stat["type"] = "count"
         stat["value"] = general["main_branch_commits"]
         stat["description"] = "commits to the configured 'main' branch for the repo"
         stat["labels"]["branch_name"] = self.main_branch
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
         stat["name"] = "main_branch_window_commits_total"
+        stat["type"] = "gauge"
         stat["value"] = general["window_main_branch_commits"]
         stat[
             "description"
@@ -117,17 +125,20 @@ class StatsOutput(object):
         releases = stats_object.get("releases", {})
         stat = deepcopy(self.tmpobj)
         stat["name"] = "releases_total"
+        stat["type"] = "count"
         stat["value"] = releases["total_releases"]
         stat["description"] = "All releases"
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
         stat["name"] = "window_releases_total"
+        stat["type"] = "gauge"
         stat["value"] = releases["total_window_releases"]
         stat["description"] = "All releases detected within the collection time range"
         formatted_stats.append(stat)
 
         stat = deepcopy(self.tmpobj)
         stat["name"] = "total_collection_time_secs"
+        stat["type"] = "gauge"
         stat["value"] = stats_object["collection_time_secs"]
         stat["description"] = "Total time (in seconds) that collection took"
         formatted_stats.append(stat)
@@ -161,6 +172,7 @@ class StatsOutput(object):
         if timetaken:
             stat = deepcopy(self.tmpobj)
             stat["name"] = "pr_collection_time_secs"
+            stat["type"] = "gauge"
             stat["description"] = "seconds taken to collect pull request stats"
             stat["value"] = timetaken
             formatted_stats.append(stat)
@@ -177,6 +189,7 @@ class StatsOutput(object):
             "window_pull_requests_total": {
                 "desc": "PRs updated within the initial collection time range",
                 "key": "total_window_pull_requests",
+                "type": "gauge",
             },
             "closed_pull_requests_total": {
                 "desc": "Closed PRs (merged or otherwise)",
@@ -185,10 +198,12 @@ class StatsOutput(object):
             "draft_pull_requests_total": {
                 "desc": "PRs in a draft state (includes closed PRs in draft state)",
                 "key": "total_draft_pull_requests",
+                "type": "gauge",
             },
             "open_pull_requests_total": {
                 "desc": "Currently open PRs",
                 "key": "total_open_pull_requests",
+                "type": "gauge",
             },
             "pull_requests_total": {
                 "desc": "All PRs created for the repo",
@@ -202,6 +217,7 @@ class StatsOutput(object):
             },
             "window_labelled_prs_total": {
                 "desc": "prs associated with a label within the initial collection time range",
+                "type": "gauge",
                 "key": "total_window_prs",
             },
         }
@@ -209,6 +225,7 @@ class StatsOutput(object):
             stat = deepcopy(self.tmpobj)
             stat["name"] = key
             stat["description"] = desc["desc"]
+            stat["type"] = desc["type"]
             stat["value"] = pulls[desc["key"]]
             formatted_stats.append(stat)
         for label, data in pulls["labels"].items():
@@ -216,6 +233,7 @@ class StatsOutput(object):
                 stat = deepcopy(self.tmpobj)
                 stat["labels"]["label"] = label
                 stat["name"] = k
+                stat["type"] = v["type"]
                 stat["value"] = data[v["key"]]
                 stat["description"] = v["desc"]
                 formatted_stats.append(stat)
@@ -240,14 +258,17 @@ class StatsOutput(object):
         descriptions = {
             "protected_branches_total": {
                 "desc": "Branches that are protected from direct commits",
+                "type": "gauge",
                 "key": "protected_branches",
             },
             "window_branches_total": {
                 "desc": "branches that have received commits within the initial collection time range",
+                "type": "gauge",
                 "key": "total_window_branches",
             },
             "branches_total": {
                 "desc": "All branches of the project",
+                "type": "count",
                 "key": "total_branches",
             },
         }
@@ -259,6 +280,7 @@ class StatsOutput(object):
             stat = deepcopy(self.tmpobj)
             stat["name"] = key
             stat["value"] = value
+            stat["type"] = desc["type"]
             stat["description"] = desc["desc"]
             formatted_stats.append(stat)
         timetaken = stats_object.get("branches", {}).get("collection_time", 0)
@@ -266,6 +288,7 @@ class StatsOutput(object):
             stat = deepcopy(self.tmpobj)
             stat["name"] = "branches_collection_time_secs"
             stat["description"] = "seconds taken to collect branch stats"
+            stat["type"] = "gauge"
             stat["value"] = timetaken
             formatted_stats.append(stat)
         """
