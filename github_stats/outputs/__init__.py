@@ -80,9 +80,7 @@ class StatsOutput(object):
         stat = deepcopy(self.tmpobj)
         stat["name"] = "unreleased_commits_count"
         stat["value"] = commits["unreleased_commits"]
-        stat[
-            "description"
-        ] = "Any commit that isn't matched to a release"
+        stat["description"] = "Any commit that isn't matched to a release"
         formatted_stats.append(stat)
         for branchname, values in commits["branch_commits"].items():
             stat = deepcopy(self.tmpobj)
