@@ -118,13 +118,12 @@ class StatsOutput(object):
         stat["labels"]["branch_name"] = self.main_branch
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
-        stat["name"] = "main_branch_window_commits_total"
+        stat["name"] = "mttr_secs"
         stat["measurement_type"] = "gauge"
-        stat["value"] = stats_object["window_main_branch_commits"]
+        stat["value"] = stats_object["mttr"]
         stat[
             "description"
-        ] = "commits to the configured 'main' branch for the repo in time range"
-        stat["labels"]["branch_name"] = self.main_branch
+        ] = "Mean Time to Resolution for fixes/etc."
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
         stat["name"] = "main_branch_window_commits_total"
