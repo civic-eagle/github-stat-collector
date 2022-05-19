@@ -10,6 +10,7 @@ user_schema = {
     "total_commits": 0,
     "total_merged_pull_requests": 0,
     "total_open_pull_requests": 0,
+    "total_draft_pull_requests": 0,
     "total_pr_time_open_secs": 0,
     "total_pull_requests": 0,
     "total_releases": 0,

@@ -278,24 +278,26 @@ class GithubAccess(object):
                 continue
             modified_time = datetime.strptime(pull["updated_at"], "%Y-%m-%dT%H:%M:%SZ")
             self.stats["pull_requests"]["total_pull_requests"] += 1
-            if pull["draft"]:
-                self.stats["pull_requests"]["total_draft_pull_requests"] += 1
             author = self._cache_user_login(pull["user"]["login"])
             self.stats["users"][author]["total_pull_requests"] += 1
-            # worth also catching pull requests created in our window
-            if created.date() < base_date.date() and created.date() > td.date():
-                self.stats["pull_requests"]["total_window_pull_requests"] += 1
-                self.stats["users"][author]["total_window_pull_requests"] += 1
-            elif (
-                modified_time.date() < base_date.date()
-                and modified_time.date() > td.date()
-            ):
-                self.stats["pull_requests"]["total_window_pull_requests"] += 1
-                self.stats["users"][author]["total_window_pull_requests"] += 1
 
             if pull["state"] == "open":
                 self.stats["pull_requests"]["total_open_pull_requests"] += 1
                 self.stats["users"][author]["total_open_pull_requests"] += 1
+            if pull["draft"]:
+                self.stats["pull_requests"]["total_draft_pull_requests"] += 1
+                self.stats["users"][author]["total_draft_pull_requests"] += 1
+
+            # worth also catching pull requests created in our window
+            if created < base_date and created > td:
+                self.stats["pull_requests"]["total_window_pull_requests"] += 1
+                self.stats["users"][author]["total_window_pull_requests"] += 1
+            elif (
+                modified_time < base_date
+                and modified_time > td
+            ):
+                self.stats["pull_requests"]["total_window_pull_requests"] += 1
+                self.stats["users"][author]["total_window_pull_requests"] += 1
 
             # Calculate avg PR time
             created = datetime.strptime(pull["created_at"], "%Y-%m-%dT%H:%M:%SZ")
@@ -329,8 +331,8 @@ class GithubAccess(object):
                     self.log.debug(f"{title}: {name} ({matches=}) for {label}")
                     self.stats["pull_requests"]["labels"][labelname]["total_prs"] += 1
                     if (
-                        modified_time.date() < base_date.date()
-                        and modified_time.date() > td.date()
+                        modified_time < base_date
+                        and modified_time > td
                     ):
                         self.stats["pull_requests"]["labels"][labelname][
                             "total_window_prs"
@@ -344,8 +346,8 @@ class GithubAccess(object):
                     else:
                         self.stats["pull_requests"]["labels"][name]["total_prs"] += 1
                     if (
-                        modified_time.date() < base_date.date()
-                        and modified_time.date() > td.date()
+                        modified_time < base_date
+                        and modified_time > td
                     ):
                         self.stats["pull_requests"]["labels"][name][
                             "total_window_prs"
@@ -760,7 +762,7 @@ class GithubAccess(object):
             if dt_created > base_date:
                 self.log.debug(f"Release {name} was created in the future. Skipping.")
                 continue
-            if dt_created.date() <= base_date.date() and dt_created.date() >= td.date():
+            if dt_created <= base_date and dt_created >= td:
                 self.stats["releases"]["total_window_releases"] += 1
                 self.stats["users"][user]["total_window_releases"] += 1
             self.stats["releases"]["total_releases"] += 1
