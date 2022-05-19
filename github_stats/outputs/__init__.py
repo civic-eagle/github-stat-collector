@@ -121,9 +121,7 @@ class StatsOutput(object):
         stat["name"] = "mttr_secs"
         stat["measurement_type"] = "gauge"
         stat["value"] = stats_object["mttr"]
-        stat[
-            "description"
-        ] = "Mean Time to Resolution for fixes/etc."
+        stat["description"] = "Mean Time to Resolution for fixes/etc."
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
         stat["name"] = "main_branch_window_commits_total"
