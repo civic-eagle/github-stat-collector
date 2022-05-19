@@ -1,6 +1,8 @@
 name: CI
 on:
   push:
+    tags:
+      - "v*"
     branches:
       - "**"
     paths-ignore:
@@ -13,7 +15,7 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Yaml file linting
         run: |
@@ -41,3 +43,29 @@ jobs:
           echo "processing ${filename}"
           docker run --rm -v "$(pwd):/mnt" koalaman/shellcheck:latest -x "${filename}"
           done < <(find . -type f -name "*.sh" ! -path "*/.git/*" -print0)
+      - name: Get current tag
+        id: get_tag
+        run: echo ::set-output name=TAG::$(echo $GITHUB_REF | cut -d / -f 3)
+    outputs:
+      tag: ${{ steps.get_tag.outputs.TAG }}
+
+  deploy:
+    name: Deploy package
+    needs:
+      - linting
+    runs-on: self-hosted
+    if: "(
+         success() &&
+         startswith(needs.linting.outputs.tag, 'v')
+         )"
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: login to GCP repo
+        uses: docker/login-action@v1
+        with:
+          registry: gcr.io
+          username: _json_key
+          password: ${{ secrets.DEPLOY_KEY_FILE }}
+      - name: Build/Deploy
+        run: TAG=${{ steps.get_tag.outputs.TAG }} bash util/build.sh
