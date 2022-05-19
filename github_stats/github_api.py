@@ -245,8 +245,6 @@ class GithubAccess(object):
         """
         self._set_collection_date(base_date, window)
         self.load_pull_requests(base_date, window)
-        self.log.info(f"PRs: {pprint.pformat(self.stats['pull_requests'])}")
-        exit(1)
         self.load_commits(base_date, window)
         self.load_branches(base_date, window)
         self.load_repo_stats(base_date, window)
