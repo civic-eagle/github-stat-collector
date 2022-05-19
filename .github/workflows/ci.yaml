@@ -24,14 +24,14 @@ jobs:
           cytopia/yamllint \
           -c yamllint.yml -s .
 
-      - name: Pipeline Python Formatting
+      - name: Python Formatting
         run: |
           docker run --rm \
           -v $(pwd):/data \
           cytopia/black \
           --check --diff .
 
-      - name: Pipeline Python Linting
+      - name: Python Linting
         run: |
           docker run --rm \
           -v $(pwd):/apps \
