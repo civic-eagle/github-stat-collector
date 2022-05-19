@@ -104,7 +104,7 @@ class Repo(object):
         """
         Given a list of PRs, find the matching releases
 
-        :returns:
+        :returns: rough mttr
         """
         tag_matches = [
             (
@@ -118,7 +118,9 @@ class Repo(object):
         walker = self.repoobj.walk(
             self.main_branch_id, pygit2.GIT_SORT_TOPOLOGICAL | pygit2.GIT_SORT_REVERSE
         )
+        mttr = 0
         for pr in pr_list:
+            walker.reset()
             walker.push(pr[1])
             for commit in walker:
                 timestamp = int(commit.commit_time)
@@ -127,12 +129,16 @@ class Repo(object):
                     if commit_hex == release[0]:
                         self.log.debug(f"{commit_hex} matches {release}, skipping")
                         break
-                    elif timestamp > release[1]:
-                        continue
                     elif timestamp <= release[1]:
                         self.log.debug(f"{commit_hex} belongs to {release}")
                         # diff between the release time and the commit time
+                        mttr += release[1] - pr[2]
                         break
+                    # if timestamp is greater than release timestamp, then this belongs to a newer release
+                    elif timestamp > release[1]:
+                        continue
+        mttr = mttr / len(pr_list)
+        return mttr
 
     def commit_release_matching(self):
         """

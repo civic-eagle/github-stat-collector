@@ -54,7 +54,7 @@ class StatsOutput(object):
         example:
          'commits': {'branch_commits': {'branch1": {"total_commits": 2, "window_commits": 1},
                      'total_commits': 3, "window_commits": 1},
-         'general': {'main_branch_commits': 1, 'tag_matches': {'release tag': 1}},
+         'main_branch_commits': 1, 'tag_matches': {'release tag': 1},
          'releases': {'releases': {'v0.1.0': {'author': '',
                                               'body': '',
                                               'created_at': '2022-03-07 19:59:11'}},
@@ -64,19 +64,19 @@ class StatsOutput(object):
         commits = stats_object.get("commits", {})
         stat = deepcopy(self.tmpobj)
         stat["name"] = "commits_collection_time_secs"
-        stat["type"] = "gauge"
+        stat["measurement_type"] = "gauge"
         stat["value"] = commits["collection_time"]
         stat["description"] = "Time taken to collect commit stats"
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
         stat["name"] = "commits_total"
-        stat["type"] = "count"
+        stat["measurement_type"] = "count"
         stat["value"] = commits["total_commits"]
         stat["description"] = "All commits for the project"
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
         stat["name"] = "window_commits_total"
-        stat["type"] = "gauge"
+        stat["measurement_type"] = "gauge"
         stat["value"] = commits["window_commits"]
         stat[
             "description"
@@ -84,13 +84,13 @@ class StatsOutput(object):
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
         stat["name"] = "avg_commit_release_time_secs"
-        stat["type"] = "gauge"
+        stat["measurement_type"] = "gauge"
         stat["value"] = commits["avg_commit_time"]
         stat["description"] = "Average time between commit and release"
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
         stat["name"] = "unreleased_commits_count"
-        stat["type"] = "gauge"
+        stat["measurement_type"] = "gauge"
         stat["value"] = commits["unreleased_commits"]
         stat["description"] = "Any commit that isn't matched to a release"
         formatted_stats.append(stat)
@@ -98,30 +98,38 @@ class StatsOutput(object):
             stat = deepcopy(self.tmpobj)
             stat["name"] = "branch_commits_total"
             stat["value"] = values["total_commits"]
-            stat["type"] = "count"
+            stat["measurement_type"] = "count"
             stat["description"] = "Count of commits to a specific branch"
             stat["labels"]["branch"] = branchname
             formatted_stats.append(stat)
             stat = deepcopy(self.tmpobj)
             stat["name"] = "branch_window_commits_total"
-            stat["type"] = "gauge"
+            stat["measurement_type"] = "gauge"
             stat["value"] = values["window_commits"]
             stat["description"] = "Count of commits to a specific branch in time range"
             stat["labels"]["branch"] = branchname
             formatted_stats.append(stat)
 
-        general = stats_object.get("general", {})
         stat = deepcopy(self.tmpobj)
         stat["name"] = "main_branch_commits_total"
-        stat["type"] = "count"
-        stat["value"] = general["main_branch_commits"]
+        stat["measurement_type"] = "count"
+        stat["value"] = stats_object["main_branch_commits"]
         stat["description"] = "commits to the configured 'main' branch for the repo"
         stat["labels"]["branch_name"] = self.main_branch
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
         stat["name"] = "main_branch_window_commits_total"
-        stat["type"] = "gauge"
-        stat["value"] = general["window_main_branch_commits"]
+        stat["measurement_type"] = "gauge"
+        stat["value"] = stats_object["window_main_branch_commits"]
+        stat[
+            "description"
+        ] = "commits to the configured 'main' branch for the repo in time range"
+        stat["labels"]["branch_name"] = self.main_branch
+        formatted_stats.append(stat)
+        stat = deepcopy(self.tmpobj)
+        stat["name"] = "main_branch_window_commits_total"
+        stat["measurement_type"] = "gauge"
+        stat["value"] = stats_object["window_main_branch_commits"]
         stat[
             "description"
         ] = "commits to the configured 'main' branch for the repo in time range"
@@ -131,20 +139,20 @@ class StatsOutput(object):
         releases = stats_object.get("releases", {})
         stat = deepcopy(self.tmpobj)
         stat["name"] = "releases_total"
-        stat["type"] = "count"
+        stat["measurement_type"] = "count"
         stat["value"] = releases["total_releases"]
         stat["description"] = "All releases"
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
         stat["name"] = "window_releases_total"
-        stat["type"] = "gauge"
+        stat["measurement_type"] = "gauge"
         stat["value"] = releases["total_window_releases"]
         stat["description"] = "All releases detected within the collection time range"
         formatted_stats.append(stat)
 
         stat = deepcopy(self.tmpobj)
         stat["name"] = "total_collection_time_secs"
-        stat["type"] = "gauge"
+        stat["measurement_type"] = "gauge"
         stat["value"] = stats_object["collection_time_secs"]
         stat["description"] = "Total time (in seconds) that collection took"
         formatted_stats.append(stat)
@@ -178,7 +186,7 @@ class StatsOutput(object):
         if timetaken:
             stat = deepcopy(self.tmpobj)
             stat["name"] = "pr_collection_time_secs"
-            stat["type"] = "gauge"
+            stat["measurement_type"] = "gauge"
             stat["description"] = "seconds taken to collect pull request stats"
             stat["value"] = timetaken
             formatted_stats.append(stat)
@@ -235,7 +243,7 @@ class StatsOutput(object):
             stat = deepcopy(self.tmpobj)
             stat["name"] = key
             stat["description"] = desc["desc"]
-            stat["type"] = desc["type"]
+            stat["measurement_type"] = desc["type"]
             stat["value"] = pulls[desc["key"]]
             formatted_stats.append(stat)
         for label, data in pulls["labels"].items():
@@ -243,7 +251,7 @@ class StatsOutput(object):
                 stat = deepcopy(self.tmpobj)
                 stat["labels"]["label"] = label
                 stat["name"] = k
-                stat["type"] = v["type"]
+                stat["measurement_type"] = v["type"]
                 stat["value"] = data[v["key"]]
                 stat["description"] = v["desc"]
                 formatted_stats.append(stat)
@@ -290,7 +298,7 @@ class StatsOutput(object):
             stat = deepcopy(self.tmpobj)
             stat["name"] = key
             stat["value"] = value
-            stat["type"] = desc["type"]
+            stat["measurement_type"] = desc["type"]
             stat["description"] = desc["desc"]
             formatted_stats.append(stat)
         timetaken = stats_object.get("branches", {}).get("collection_time", 0)
@@ -298,7 +306,7 @@ class StatsOutput(object):
             stat = deepcopy(self.tmpobj)
             stat["name"] = "branches_collection_time_secs"
             stat["description"] = "seconds taken to collect branch stats"
-            stat["type"] = "gauge"
+            stat["measurement_type"] = "gauge"
             stat["value"] = timetaken
             formatted_stats.append(stat)
         """
@@ -389,6 +397,7 @@ class StatsOutput(object):
             stat = deepcopy(self.tmpobj)
             stat["name"] = "workflow_collection_time_secs"
             stat["description"] = "seconds taken to collect workflow stats"
+            stat["measurement_type"] = "gauge"
             stat["value"] = timetaken
             formatted_stats.append(stat)
         for k, counts in workflows.get("events", {}).items():
@@ -400,11 +409,13 @@ class StatsOutput(object):
                 stat["labels"]["event_type"] = k
                 stat["value"] = val
                 stat["description"] = "Count of workflow events"
+                stat["measurement_type"] = "count"
                 formatted_stats.append(stat)
         for k, v in workflows.get("workflows", {}).items():
             for rtype, val in v["runs"].items():
                 stat = deepcopy(self.tmpobj)
                 stat["name"] = "workflows_runs_total"
+                stat["measurement_type"] = "count"
                 stat["labels"]["run_type"] = rtype
                 stat["labels"]["workflow"] = k
                 stat["value"] = val
@@ -526,7 +537,7 @@ class StatsOutput(object):
                 stat = deepcopy(self.tmpobj)
                 stat["name"] = f"users_{wkstat}"
                 stat["labels"]["user"] = user
-                stat["type"] = desc["type"]
+                stat["measurement_type"] = desc["type"]
                 stat["value"] = data[desc["key"]]
                 stat["description"] = desc["desc"]
                 formatted_stats.append(stat)
@@ -535,7 +546,7 @@ class StatsOutput(object):
                 stat["name"] = "users_workflow_total"
                 stat["labels"]["user"] = user
                 stat["labels"]["run_type"] = wktype
-                stat["type"] = "count"
+                stat["measurement_type"] = "count"
                 stat["value"] = value
                 stat["description"] = "total count of workflow runs by a user"
                 formatted_stats.append(stat)
@@ -545,7 +556,7 @@ class StatsOutput(object):
                     stat["name"] = "users_workflow_total"
                     stat["labels"]["workflow"] = workflow
                     stat["labels"]["user"] = user
-                    stat["type"] = "count"
+                    stat["measurement_type"] = "count"
                     stat["labels"]["run_type"] = wktype
                     stat["value"] = value
                     stat[
@@ -554,7 +565,7 @@ class StatsOutput(object):
                     formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
         stat["name"] = "users_dropped"
-        stat["type"] = "gauge"
+        stat["measurement_type"] = "gauge"
         stat["value"] = dropped_users
         stat[
             "description"
@@ -562,7 +573,7 @@ class StatsOutput(object):
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
         stat["name"] = "users_accepted"
-        stat["type"] = "gauge"
+        stat["measurement_type"] = "gauge"
         stat["value"] = accepted_users
         stat["description"] = "Number of user objects that pass filtering"
         formatted_stats.append(stat)
@@ -580,14 +591,14 @@ class StatsOutput(object):
             stat = deepcopy(self.tmpobj)
             stat["name"] = "weekly_line_changes_total"
             stat["labels"]["type"] = "additions"
-            stat["type"] = "gauge"
+            stat["measurement_type"] = "gauge"
             stat["labels"]["week"] = week
             stat["value"] = counts["additions"]
             stat["description"] = "count of line changes during a week"
             formatted_stats.append(stat)
             stat = deepcopy(self.tmpobj)
             stat["name"] = "weekly_line_changes_total"
-            stat["type"] = "gauge"
+            stat["measurement_type"] = "gauge"
             stat["labels"]["type"] = "deletions"
             stat["labels"]["week"] = week
             stat["description"] = "count of line changes during a week"
@@ -610,7 +621,7 @@ class StatsOutput(object):
         ):
             stat = deepcopy(self.tmpobj)
             stat["name"] = "weekly_commits_total"
-            stat["type"] = "gauge"
+            stat["measurement_type"] = "gauge"
             stat["labels"]["week"] = week
             stat["value"] = details["total_commits"]
             stat[
@@ -620,7 +631,7 @@ class StatsOutput(object):
             for day, value in details["daily"].items():
                 stat = deepcopy(self.tmpobj)
                 stat["name"] = "daily_commits_total"
-                stat["type"] = "gauge"
+                stat["measurement_type"] = "gauge"
                 stat["labels"]["week"] = week
                 stat["labels"]["day"] = day
                 stat["value"] = value
@@ -638,7 +649,7 @@ class StatsOutput(object):
         for name, details in stats_object["repo_stats"].get("contributors", {}).items():
             stat = deepcopy(self.tmpobj)
             stat["name"] = "contributor_commits_total"
-            stat["type"] = "gauge"
+            stat["measurement_type"] = "gauge"
             stat["labels"]["name"] = name
             stat["value"] = details["total_commits"]
             stat["description"] = "Total commits from a contributor"
@@ -646,7 +657,7 @@ class StatsOutput(object):
             for week, wd in details["weeks"].items():
                 stat = deepcopy(self.tmpobj)
                 stat["name"] = "weekly_contributor_commits_total"
-                stat["type"] = "gauge"
+                stat["measurement_type"] = "gauge"
                 stat["labels"]["name"] = name
                 stat["labels"]["week"] = week
                 stat["description"] = "Weekly commits made by a contributor"
@@ -655,7 +666,7 @@ class StatsOutput(object):
                 stat = deepcopy(self.tmpobj)
                 stat["name"] = "weekly_contributor_line_changes_total"
                 stat["labels"]["name"] = name
-                stat["type"] = "gauge"
+                stat["measurement_type"] = "gauge"
                 stat["labels"]["week"] = week
                 stat["labels"]["type"] = "additions"
                 stat["description"] = "Weekly line changes made by a contributor"
@@ -664,7 +675,7 @@ class StatsOutput(object):
                 stat = deepcopy(self.tmpobj)
                 stat["name"] = "weekly_contributor_line_changes_total"
                 stat["labels"]["name"] = name
-                stat["type"] = "gauge"
+                stat["measurement_type"] = "gauge"
                 stat["labels"]["week"] = week
                 stat["labels"]["type"] = "deletions"
                 stat["description"] = "Weekly line changes made by a contributor"
@@ -738,13 +749,13 @@ class StatsOutput(object):
             stat = deepcopy(self.tmpobj)
             stat["name"] = "punchcard_daily_commits_total"
             stat["description"] = "punchcard count of commits per day"
-            stat["type"] = "gauge"
+            stat["measurement_type"] = "gauge"
             stat["labels"]["day"] = dayslug
             stat["value"] = day["total_commits"]
             formatted_stats.append(stat)
             stat = deepcopy(self.tmpobj)
             stat["name"] = "punchcard_daily_busiest_hour"
-            stat["type"] = "gauge"
+            stat["measurement_type"] = "gauge"
             stat["description"] = "the UTC-based hour (per day) with the most commits"
             stat["labels"]["day"] = dayslug
             stat["value"] = day["busiest_hour"]
@@ -754,7 +765,7 @@ class StatsOutput(object):
             stat = deepcopy(self.tmpobj)
             stat["name"] = "punchard_collection_time_secs"
             stat["description"] = "seconds taken to collect punchcard stats"
-            stat["type"] = "gauge"
+            stat["measurement_type"] = "gauge"
             stat["value"] = timetaken
             formatted_stats.append(stat)
 

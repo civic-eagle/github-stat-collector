@@ -248,7 +248,7 @@ class GithubAccess(object):
         self.load_branches(base_date, window)
         self.load_repo_stats(base_date, window)
         self.load_pull_requests(base_date, window)
-        self.repo.match_bugfixes(self.stats["bug_matches"])
+        self.stats["mttr"] = self.repo.match_bugfixes(self.stats["bug_matches"])
         self.load_releases(base_date, window)
         self.load_workflow_runs(base_date, window)
         self.stats["collection_time_secs"] = time.time() - self.starttime
