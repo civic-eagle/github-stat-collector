@@ -69,7 +69,7 @@ class GithubAccess(object):
         self.special_names = {v: k for k, v in self.special_logins.items()}
         self.broken_users = config["repo"].get("broken_users", [])
 
-        self.tag_matches, self.bug_matches, self.pr_matches = load_patterns(
+        self.tag_matches, self.bug_matches, self.pr_bug_matches = load_patterns(
             config["repo"].get("tag_patterns", []),
             config["repo"].get("bug_matching", {}),
         )
@@ -248,6 +248,7 @@ class GithubAccess(object):
         self.load_branches(base_date, window)
         self.load_repo_stats(base_date, window)
         self.load_pull_requests(base_date, window)
+        self.repo.match_bugfixes(self.stats["bug_matches"])
         self.load_releases(base_date, window)
         self.load_workflow_runs(base_date, window)
         self.stats["collection_time_secs"] = time.time() - self.starttime
@@ -267,6 +268,8 @@ class GithubAccess(object):
         self.log.info("Loading Pull Request Data...")
         url = f"/repos/{self.repo_name}/pulls"
         for pull in self._github_query(url, params={"state": "all"}):
+            title = pull["title"]
+            commit = pull["head"]["sha"]
             created = datetime.strptime(pull["created_at"], "%Y-%m-%dT%H:%M:%SZ")
             if created > base_date:
                 self.log.debug(f"{pull['title']} was created in the future. Skipping")
@@ -282,14 +285,18 @@ class GithubAccess(object):
                 and modified_time.date() > td.date()
             ):
                 self.stats["pull_requests"]["total_window_pull_requests"] += 1
-                self._process_labels(pull["title"], pull["labels"], "total_old_prs")
                 self.stats["users"][author]["total_window_pull_requests"] += 1
+            # Regex match PR as a bugfix
+            for pattern in self.bug_matches:
+                if pattern.match(title):
+                    self.stats["bug_matches"].append({"name": title, "hex": commit})
+            # process/count labels of this PR
             for label in pull["labels"]:
                 name = label["name"]
                 for labelname, matches in self.label_matches.items():
                     if name not in matches:
                         continue
-                    self.log.debug(f"{pull['title']}: {name} ({matches=}) for {label}")
+                    self.log.debug(f"{title}: {name} ({matches=}) for {label}")
                     self.stats["pull_requests"]["labels"][labelname]["total_prs"] += 1
                     if (
                         modified_time.date() < base_date.date()
@@ -313,10 +320,9 @@ class GithubAccess(object):
                         self.stats["pull_requests"]["labels"][name][
                             "total_window_prs"
                         ] += 1
-
-            """
-            Calculate avg PR time
-            """
+                if name in self.pr_bug_matches:
+                    self.stats["bug_matches"].append({"name": title, "hex": commit})
+            # Calculate avg PR time
             created = datetime.strptime(pull["created_at"], "%Y-%m-%dT%H:%M:%SZ")
             merged = pull.get("merged_at", None)
             if not merged:

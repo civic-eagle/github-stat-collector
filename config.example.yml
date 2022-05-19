@@ -13,6 +13,8 @@ repo:
     patterns:
       - ^HOTFIX.*
       - ^BUG.*
+      - ^Bugfix.*
+      - ^Fix.*
   additional_labels:
     # create new PR labels by combining other existing labels
     tech-debt:

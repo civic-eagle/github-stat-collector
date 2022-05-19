@@ -47,14 +47,12 @@ stats = {
         "avg_commit_time": 0,
         "unreleasd_commits": 0,
     },
-    "general": {
-        "main_branch_commits": 0,
-        "window_main_branch_commits": 0,
-        # count matching tags as we pass through PRs/etc.
-        "tag_matches": {},
-        # track PRs with labels/patterns that match our definition of a bug
-        "bug_matches": [],
-    },
+    # count matching tags as we pass through PRs/etc.
+    "tag_matches": {},
+    # track PRs with labels/patterns that match our definition of a bug
+    "bug_matches": [],
+    "main_branch_commits": 0,
+    "window_main_branch_commits": 0,
     "pull_requests": {
         "total_pull_requests": 0,
         "total_merged_pull_requests": 0,
