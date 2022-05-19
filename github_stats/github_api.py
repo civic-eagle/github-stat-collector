@@ -244,10 +244,12 @@ class GithubAccess(object):
         :returns: None
         """
         self._set_collection_date(base_date, window)
+        self.load_pull_requests(base_date, window)
+        self.log.info(f"PRs: {pprint.pformat(self.stats['pull_requests'])}")
+        exit(1)
         self.load_commits(base_date, window)
         self.load_branches(base_date, window)
         self.load_repo_stats(base_date, window)
-        self.load_pull_requests(base_date, window)
         self.stats["mttr"] = self.repo.match_bugfixes(self.stats["bug_matches"])
         self.load_releases(base_date, window)
         self.load_workflow_runs(base_date, window)
@@ -291,6 +293,10 @@ class GithubAccess(object):
                 self.stats["pull_requests"]["total_window_pull_requests"] += 1
                 self.stats["users"][author]["total_window_pull_requests"] += 1
 
+            if pull["state"] == "open":
+                self.stats["pull_requests"]["total_open_pull_requests"] += 1
+                self.stats["users"][author]["total_open_pull_requests"] += 1
+
             # Calculate avg PR time
             created = datetime.strptime(pull["created_at"], "%Y-%m-%dT%H:%M:%SZ")
             closed = False
@@ -298,8 +304,11 @@ class GithubAccess(object):
             merged_ts = None
             if not merged:
                 closed = pull.get("closed_at", None)
+                self.stats["pull_requests"]["total_closed_pull_requests"] += 1
+                self.stats["users"][author]["total_closed_pull_requests"] += 1
             else:
                 self.stats["pull_requests"]["total_merged_pull_requests"] += 1
+                self.stats["users"][author]["total_merged_pull_requests"] += 1
             if merged or closed:
                 if merged:
                     endtime = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ")
@@ -365,19 +374,6 @@ class GithubAccess(object):
                 set(sorted(self.stats["bug_matches"], key=lambda x: x[2]))
             )
 
-            """
-            We'll be explicit about state here to avoid
-            changed state values affecting this later
-            """
-            if pull["state"] == "open":
-                self.stats["pull_requests"]["total_open_pull_requests"] += 1
-                self.stats["users"][author]["total_open_pull_requests"] += 1
-            elif not merged and pull["state"] == "closed":
-                self.stats["pull_requests"]["total_closed_pull_requests"] += 1
-                self.stats["users"][author]["total_closed_pull_requests"] += 1
-            elif pull["state"] == "closed":
-                self.stats["pull_requests"]["total_merged_pull_requests"] += 1
-                self.stats["users"][author]["total_merged_pull_requests"] += 1
         """
         Generate average PR time after collecting all stats
         to get better numbers
