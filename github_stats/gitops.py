@@ -51,6 +51,26 @@ class Repo(object):
             self.primary_branches["main"]
         ).target
 
+        """
+        find all matching tags
+        and convert them to their corresponding commit objects
+        This let's us do an OID comparison between each commit
+        and the tag references
+        """
+        self.releases = [
+            (
+                str(self.repoobj[self.repoobj.references[r].target].hex),
+                int(self.repoobj[self.repoobj.references[r].target].commit_time),
+            )
+            for r in self.repoobj.references
+            # use this to short-circuit larger reference lists
+            if "tag" in r
+            and self.repoobj.references[r].type == pygit2.GIT_REF_OID
+            and any(v.match(r) for v in self.tag_matches.values())
+        ]
+        # sort by commit timestamp
+        self.releases.sort(key=lambda x: x[1])
+
     def _checkout_branch(self, branch):
         """
         Checkout a particular branch
@@ -106,42 +126,22 @@ class Repo(object):
 
         :returns: rough mttr
         """
-        tag_matches = [
-            (
-                str(self.repoobj[self.repoobj.references[r].target].hex),
-                int(self.repoobj[self.repoobj.references[r].target].commit_time),
-            )
-            for r in self.repoobj.references
-            if any(v.match(r) for v in self.tag_matches.values())
-            and self.repoobj.references[r].type == pygit2.GIT_REF_OID
-        ]
-        walker = self.repoobj.walk(
-            self.main_branch_id, pygit2.GIT_SORT_TOPOLOGICAL | pygit2.GIT_SORT_REVERSE
-        )
+        if not self.releases:
+            return 0
         mttr = 0
         self.log.debug("Tracking MTTR...")
         for pr in pr_list:
-            self.log.debug(f"Looking at PR {pr[0]} -> {pr[1]}")
-            walker.reset()
-            walker.push(pr[1])
-            for commit in walker:
-                timestamp = int(commit.commit_time)
-                commit_hex = str(commit.hex)
-                for release in tag_matches:
-                    if commit_hex == release[0]:
-                        self.log.debug(f"{commit_hex} matches {release}, skipping")
-                        break
-                    elif timestamp <= release[1]:
-                        self.log.debug(f"{pr[0]} ({pr[1]}) belongs to {release}")
-                        # diff between the release time and the commit time
-                        mttr += release[1] - pr[2]
-                        break
-                    # if timestamp is greater than release timestamp, then this belongs to a newer release
-                    elif timestamp > release[1]:
-                        continue
+            for release in self.releases:
+                # if timestamp is greater than release timestamp, then this belongs to a newer release
+                if pr[2] > release[1]:
+                    continue
+                elif pr[2] <= release[1]:
+                    self.log.debug(f"{pr[0]} ({pr[1]}) belongs to {release}")
+                    # diff between the release time and the commit time
+                    mttr += release[1] - pr[2]
+                    break
         mttr = mttr / len(pr_list)
         self.log.debug(f"MTTR: {mttr}")
-        exit(1)
         return mttr
 
     def commit_release_matching(self):
@@ -157,23 +157,6 @@ class Repo(object):
         avg_commit_time = 0
         unreleased_commits = 0
         commits = 0
-        """
-        find all matching tags
-        and convert them to their corresponding commit objects
-        This let's us do an OID comparison between each commit
-        and the tag references
-        """
-        tag_matches = [
-            (
-                str(self.repoobj[self.repoobj.references[r].target].hex),
-                int(self.repoobj[self.repoobj.references[r].target].commit_time),
-            )
-            for r in self.repoobj.references
-            if any(v.match(r) for v in self.tag_matches.values())
-            and self.repoobj.references[r].type == pygit2.GIT_REF_OID
-        ]
-        # sort by commit timestamp
-        tag_matches.sort(key=lambda x: x[1])
         walker = self.repoobj.walk(
             self.main_branch_id, pygit2.GIT_SORT_TOPOLOGICAL | pygit2.GIT_SORT_REVERSE
         )
@@ -181,15 +164,19 @@ class Repo(object):
             timestamp = int(commit.commit_time)
             commit_hex = str(commit.hex)
             commits += 1
-            # skip super old timestamps that have bad tags/etc.
-            if timestamp < tag_matches[0][1]:
+            # short-circuit evaluation if we're missing releases
+            if not self.releases:
                 continue
-            for release in tag_matches:
-                if commit_hex == release[0]:
+            # skip super old timestamps that have bad tags/etc.
+            if timestamp < self.releases[0][1]:
+                continue
+            for release in self.releases:
+                # if timestamp is greater than release timestamp, then this belongs to a newer release
+                if timestamp > release[1]:
+                    continue
+                elif commit_hex == release[0]:
                     self.log.debug(f"{commit_hex} matches {release}, skipping")
                     break
-                elif timestamp > release[1]:
-                    continue
                 elif timestamp <= release[1]:
                     self.log.debug(f"{commit_hex} belongs to {release}")
                     # diff between the release time and the commit time
@@ -198,9 +185,12 @@ class Repo(object):
             else:
                 self.log.debug(f"No release found for {commit_hex}")
                 unreleased_commits += 1
-        avg_commit_time = avg_commit_time / len(tag_matches)
-        self.log.debug(f"{avg_commit_time=}, {unreleased_commits=}, {commits=}")
-        return avg_commit_time, unreleased_commits, commits
+        if self.releases:
+            avg_commit_time = avg_commit_time / len(self.releases)
+            self.log.debug(f"{avg_commit_time=}, {unreleased_commits=}, {commits=}")
+            return avg_commit_time, unreleased_commits, commits
+        else:
+            return 0, commits, commits
 
     def branch_commit_log(self, branch_name):
         """

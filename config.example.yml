@@ -6,7 +6,9 @@ repo:
     release: release
   tag_patterns:
     - name: release
-      pattern: "^v.*"
+      # use more generous globs here to address patterns like
+      # refs/tags/v0.1
+      pattern: ".*v.*"
   bug_matching:
     labels:
       - bug

@@ -51,6 +51,7 @@ stats = {
     "tag_matches": {},
     # track PRs with labels/patterns that match our definition of a bug
     "bug_matches": [],
+    "mttr": 0,
     "main_branch_commits": 0,
     "window_main_branch_commits": 0,
     "pull_requests": {
