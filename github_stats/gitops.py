@@ -119,7 +119,9 @@ class Repo(object):
             self.main_branch_id, pygit2.GIT_SORT_TOPOLOGICAL | pygit2.GIT_SORT_REVERSE
         )
         mttr = 0
+        self.log.debug("Tracking MTTR...")
         for pr in pr_list:
+            self.log.debug(f"Looking at PR {pr[0]} -> {pr[1]}")
             walker.reset()
             walker.push(pr[1])
             for commit in walker:
@@ -130,7 +132,7 @@ class Repo(object):
                         self.log.debug(f"{commit_hex} matches {release}, skipping")
                         break
                     elif timestamp <= release[1]:
-                        self.log.debug(f"{commit_hex} belongs to {release}")
+                        self.log.debug(f"{pr[0]} ({pr[1]}) belongs to {release}")
                         # diff between the release time and the commit time
                         mttr += release[1] - pr[2]
                         break
@@ -138,6 +140,8 @@ class Repo(object):
                     elif timestamp > release[1]:
                         continue
         mttr = mttr / len(pr_list)
+        self.log.debug(f"MTTR: {mttr}")
+        exit(1)
         return mttr
 
     def commit_release_matching(self):

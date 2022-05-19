@@ -95,7 +95,7 @@ class GithubAccess(object):
             }
             for label in self.label_matches
         }
-        self.stats["general"]["tag_matches"] = {t: 0 for t in self.tag_matches.keys()}
+        self.stats["tag_matches"] = {t: 0 for t in self.tag_matches.keys()}
         self.starttime = time.time()
         self._load_contributors()
 
@@ -485,7 +485,7 @@ class GithubAccess(object):
             self.log.debug(f"Processing meta data for {branch}")
             self.stats["branches"]["total_branches"] += 1
             if branch == self.main_branch:
-                self.stats["general"]["main_branch_commits"] += 1
+                self.stats["main_branch_commits"] += 1
             if td_ts < int(last_commit) < base_ts:
                 self.stats["branches"]["total_window_branches"] += 1
 
