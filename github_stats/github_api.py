@@ -292,10 +292,7 @@ class GithubAccess(object):
             if created < base_date and created > td:
                 self.stats["pull_requests"]["total_window_pull_requests"] += 1
                 self.stats["users"][author]["total_window_pull_requests"] += 1
-            elif (
-                modified_time < base_date
-                and modified_time > td
-            ):
+            elif modified_time < base_date and modified_time > td:
                 self.stats["pull_requests"]["total_window_pull_requests"] += 1
                 self.stats["users"][author]["total_window_pull_requests"] += 1
 
@@ -330,10 +327,7 @@ class GithubAccess(object):
                         continue
                     self.log.debug(f"{title}: {name} ({matches=}) for {label}")
                     self.stats["pull_requests"]["labels"][labelname]["total_prs"] += 1
-                    if (
-                        modified_time < base_date
-                        and modified_time > td
-                    ):
+                    if modified_time < base_date and modified_time > td:
                         self.stats["pull_requests"]["labels"][labelname][
                             "total_window_prs"
                         ] += 1
@@ -345,10 +339,7 @@ class GithubAccess(object):
                         }
                     else:
                         self.stats["pull_requests"]["labels"][name]["total_prs"] += 1
-                    if (
-                        modified_time < base_date
-                        and modified_time > td
-                    ):
+                    if modified_time < base_date and modified_time > td:
                         self.stats["pull_requests"]["labels"][name][
                             "total_window_prs"
                         ] += 1
