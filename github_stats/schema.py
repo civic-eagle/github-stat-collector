@@ -50,7 +50,10 @@ stats = {
     "general": {
         "main_branch_commits": 0,
         "window_main_branch_commits": 0,
+        # count matching tags as we pass through PRs/etc.
         "tag_matches": {},
+        # track PRs with labels/patterns that match our definition of a bug
+        "bug_matches": [],
     },
     "pull_requests": {
         "total_pull_requests": 0,

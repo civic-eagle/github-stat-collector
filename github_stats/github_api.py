@@ -15,7 +15,6 @@ import pprint
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
-import regex
 import time
 import urllib.parse
 
@@ -24,6 +23,7 @@ from github_stats.schema import user_login_cache as user_login_cache_schema
 from github_stats.schema import stats as stats_schema
 from github_stats.schema import DEFAULT_WINDOW
 from github_stats.gitops import Repo
+from github_stats.util import load_patterns
 
 calendar.setfirstweekday(calendar.SUNDAY)
 
@@ -68,19 +68,18 @@ class GithubAccess(object):
         self.special_logins = config["repo"].get("special_logins", {})
         self.special_names = {v: k for k, v in self.special_logins.items()}
         self.broken_users = config["repo"].get("broken_users", [])
-        """
-        Many tag patterns
-        """
-        self.tag_matches = {
-            tag["name"]: regex.compile(f".*{tag['pattern']}.*")
-            for tag in config["repo"].get("tag_patterns", list())
-        }
+
+        self.tag_matches, self.bug_matches, self.pr_matches = load_patterns(
+            config["repo"].get("tag_patterns", []),
+            config["repo"].get("bug_matching", {}),
+        )
+
         """
         Many label matching patterns
         """
         self.label_matches = {
             labelname: labels
-            for labelname, labels in config["repo"].get("labels", {}).items()
+            for labelname, labels in config["repo"].get("additional_labels", {}).items()
         }
 
         """
@@ -96,9 +95,7 @@ class GithubAccess(object):
             }
             for label in self.label_matches
         }
-        self.stats["general"]["tag_matches"] = {
-            t["name"]: 0 for t in config["repo"].get("tag_patterns", list())
-        }
+        self.stats["general"]["tag_matches"] = {t: 0 for t in self.tag_matches.keys()}
         self.starttime = time.time()
         self._load_contributors()
 

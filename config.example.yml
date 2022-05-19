@@ -6,20 +6,18 @@ repo:
     release: release
   tag_patterns:
     - name: release
-      pattern: "$v"
-  labels:
-    bugs:
+      pattern: "^v.*"
+  bug_matching:
+    labels:
       - bug
-    features:
-      - enhancement
-    security:
-      - security
-    documentation:
-      - documentation
+    patterns:
+      - ^HOTFIX.*
+      - ^BUG.*
+  additional_labels:
+    # create new PR labels by combining other existing labels
     tech-debt:
       - dependencies
-    infrastructure:
-      - infrastructure
+      - duplicate
   special_logins:
     "User 1": user1
   broken_users:

@@ -1,8 +1,9 @@
 import logging
 import os
 import pygit2
-import regex
 import time
+
+from github_stats.util import load_patterns
 
 
 class Repo(object):
@@ -20,10 +21,10 @@ class Repo(object):
         self.repo_url = config["repo"]["clone_url"]
         self.repo_path = f"{config['repo']['folder']}/{config['repo']['name']}"
         self.primary_branches = config["repo"]["branches"]
-        self.tag_matches = {
-            tag["name"]: regex.compile(f".*{tag['pattern']}.*")
-            for tag in config["repo"].get("tag_patterns", list())
-        }
+        self.tag_matches, self.bug_matches, _ = load_patterns(
+            config["repo"].get("tag_patterns", []),
+            config["repo"].get("bug_matching", {}),
+        )
         self._prep_repo()
 
     def _prep_repo(self):
