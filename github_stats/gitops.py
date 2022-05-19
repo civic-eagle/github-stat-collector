@@ -186,7 +186,8 @@ class Repo(object):
                 self.log.debug(f"No release found for {commit_hex}")
                 unreleased_commits += 1
         if self.releases:
-            avg_commit_time = avg_commit_time / len(self.releases)
+            # add one additional release to address commits before the initial release that we skip
+            avg_commit_time = avg_commit_time / (len(self.releases) + 1)
             self.log.debug(f"{avg_commit_time=}, {unreleased_commits=}, {commits=}")
             return avg_commit_time, unreleased_commits, commits
         else:
