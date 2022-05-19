@@ -100,6 +100,40 @@ class Repo(object):
             yield (branch_name, commit.commit_time)
         self.log.debug(f"Found {branch_count} branches in the repo")
 
+    def match_bugfixes(self, pr_list):
+        """
+        Given a list of PRs, find the matching releases
+
+        :returns:
+        """
+        tag_matches = [
+            (
+                str(self.repoobj[self.repoobj.references[r].target].hex),
+                int(self.repoobj[self.repoobj.references[r].target].commit_time),
+            )
+            for r in self.repoobj.references
+            if any(v.match(r) for v in self.tag_matches.values())
+            and self.repoobj.references[r].type == pygit2.GIT_REF_OID
+        ]
+        walker = self.repoobj.walk(
+            self.main_branch_id, pygit2.GIT_SORT_TOPOLOGICAL | pygit2.GIT_SORT_REVERSE
+        )
+        for pr in pr_list:
+            walker.push(pr[1])
+            for commit in walker:
+                timestamp = int(commit.commit_time)
+                commit_hex = str(commit.hex)
+                for release in tag_matches:
+                    if commit_hex == release[0]:
+                        self.log.debug(f"{commit_hex} matches {release}, skipping")
+                        break
+                    elif timestamp > release[1]:
+                        continue
+                    elif timestamp <= release[1]:
+                        self.log.debug(f"{commit_hex} belongs to {release}")
+                        # diff between the release time and the commit time
+                        break
+
     def commit_release_matching(self):
         """
         1. Loop through a sorted list of all commits to the repo
@@ -107,8 +141,12 @@ class Repo(object):
         3. diff the time between the commit and the release
         4. do a rolling average on number of releases
 
-        :returns: None
+        :returns: Avg commit time, count of unreleased commits, count of all commits
+        :rtype: tuple(int, int, int)
         """
+        avg_commit_time = 0
+        unreleased_commits = 0
+        commits = 0
         """
         find all matching tags
         and convert them to their corresponding commit objects
@@ -126,9 +164,6 @@ class Repo(object):
         ]
         # sort by commit timestamp
         tag_matches.sort(key=lambda x: x[1])
-        avg_commit_time = 0
-        unreleased_commits = 0
-        commits = 0
         walker = self.repoobj.walk(
             self.main_branch_id, pygit2.GIT_SORT_TOPOLOGICAL | pygit2.GIT_SORT_REVERSE
         )

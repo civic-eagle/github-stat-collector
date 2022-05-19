@@ -286,10 +286,27 @@ class GithubAccess(object):
             ):
                 self.stats["pull_requests"]["total_window_pull_requests"] += 1
                 self.stats["users"][author]["total_window_pull_requests"] += 1
-            # Regex match PR as a bugfix
-            for pattern in self.bug_matches:
-                if pattern.match(title):
-                    self.stats["bug_matches"].append({"name": title, "hex": commit})
+
+            # Calculate avg PR time
+            created = datetime.strptime(pull["created_at"], "%Y-%m-%dT%H:%M:%SZ")
+            closed = False
+            merged = pull.get("merged_at", None)
+            merged_ts = None
+            if not merged:
+                closed = pull.get("closed_at", None)
+            else:
+                self.stats["pull_requests"]["total_merged_pull_requests"] += 1
+            if merged or closed:
+                if merged:
+                    endtime = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ")
+                else:
+                    endtime = datetime.strptime(closed, "%Y-%m-%dT%H:%M:%SZ")
+                timeopen = (endtime - created).total_seconds()
+                self.stats["pull_requests"]["total_pr_time_open_secs"] += timeopen
+                self.stats["users"][author]["total_pr_time_open_secs"] += timeopen
+            if merged:
+                merged_ts = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ").timestamp()
+
             # process/count labels of this PR
             for label in pull["labels"]:
                 name = label["name"]
@@ -320,23 +337,29 @@ class GithubAccess(object):
                         self.stats["pull_requests"]["labels"][name][
                             "total_window_prs"
                         ] += 1
-                if name in self.pr_bug_matches:
-                    self.stats["bug_matches"].append({"name": title, "hex": commit})
-            # Calculate avg PR time
-            created = datetime.strptime(pull["created_at"], "%Y-%m-%dT%H:%M:%SZ")
-            merged = pull.get("merged_at", None)
-            if not merged:
-                closed = pull.get("closed_at", None)
-            else:
-                self.stats["pull_requests"]["total_merged_pull_requests"] += 1
-            if merged or closed:
-                if merged:
-                    endtime = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ")
-                else:
-                    endtime = datetime.strptime(closed, "%Y-%m-%dT%H:%M:%SZ")
-                timeopen = (endtime - created).total_seconds()
-                self.stats["pull_requests"]["total_pr_time_open_secs"] += timeopen
-                self.stats["users"][author]["total_pr_time_open_secs"] += timeopen
+                if merged_ts and name in self.pr_bug_matches:
+                    self.stats["bug_matches"].append((title, commit, merged_ts))
+
+            # Regex match PR as a bugfix
+            for pattern in self.bug_matches:
+                """
+                To properly track MTTR, we should only look at closed PRs,
+                so if a PR is closed or still open,
+                we shouldn't try to track it's MTTR
+                """
+                if not merged_ts:
+                    break
+                if not pattern.match(title):
+                    continue
+                self.stats["bug_matches"].append((title, commit, merged_ts))
+            """
+            ensure we're sorted in date order
+            so our scans for matching releases can go faster
+            also ensure no duplicates
+            """
+            self.stats["bug_matches"] = list(
+                set(sorted(self.stats["bug_matches"], key=lambda x: x[2]))
+            )
 
             """
             We'll be explicit about state here to avoid
