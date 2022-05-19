@@ -280,7 +280,11 @@ class GithubAccess(object):
                 self.stats["pull_requests"]["total_draft_pull_requests"] += 1
             author = self._cache_user_login(pull["user"]["login"])
             self.stats["users"][author]["total_pull_requests"] += 1
-            if (
+            # worth also catching pull requests created in our window
+            if created.date() < base_date.date() and created.date() > td.date():
+                self.stats["pull_requests"]["total_window_pull_requests"] += 1
+                self.stats["users"][author]["total_window_pull_requests"] += 1
+            elif (
                 modified_time.date() < base_date.date()
                 and modified_time.date() > td.date()
             ):
