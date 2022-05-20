@@ -22,7 +22,7 @@ class InfluxOutput(StatsOutput):
         meta = {
             "url": influx_config["endpoint"],
             "enable_gzip": True,
-            "batch_size": influx_config.get("batch", 100),
+            "batch_size": influx_config.get("batch", 1000),
         }
         token = os.environ.get("INFLUX_TOKEN", "")
         if not token:
