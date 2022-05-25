@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TAG=${TAG:-$(date +%s)}
+TAG=${TAG:-$(git tag | tail -1)}
 ROOT="gcr.io"
 PROJECT="civic-eagle-enview-dev"
 
