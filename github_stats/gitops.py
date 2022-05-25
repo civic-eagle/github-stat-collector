@@ -45,6 +45,7 @@ class Repo(object):
         self.repoobj = pygit2.Repository(self.repo_path)
         remote = self.repoobj.remotes["origin"]
         progress = remote.fetch(callbacks=self.callbacks)
+        # pulling data from repo is async, so we have to wait here
         while progress.received_objects < progress.total_objects:
             time.sleep(1)
         self.main_branch_id = self._checkout_branch(
@@ -77,6 +78,7 @@ class Repo(object):
         and return the tracking object
 
         :returns: branch object
+        :rtype: pygit2.Reference
         """
         self.log.debug(f"Checking out {branch}...")
         remote_id = self.repoobj.lookup_reference(f"refs/remotes/origin/{branch}")
@@ -122,9 +124,10 @@ class Repo(object):
 
     def match_bugfixes(self, pr_list):
         """
-        Given a list of PRs, find the matching releases
+        Given a list of PRs merge commits, find the matching releases
 
         :returns: rough mttr
+        :rtype: float
         """
         if not self.releases:
             return 0
@@ -200,6 +203,7 @@ class Repo(object):
         are tougher to properly track
 
         :returns: generator of commit objects for a branch
+        :rtype: generator(dict())
         """
         self.log.debug(f"Loading commit log for {branch_name}...")
         commit_count = 0
