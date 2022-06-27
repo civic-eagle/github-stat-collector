@@ -12,7 +12,7 @@ from github_stats.github_api import GithubAccess
 from github_stats.outputs.influx import InfluxOutput
 
 SCRIPTDIR = os.path.dirname(os.path.realpath(__file__))
-logger = logging.getLogger("backfill-stats")
+logger = logging.getLogger("github-stats")
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
