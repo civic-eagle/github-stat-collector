@@ -24,4 +24,5 @@ jobs:
           docker run --rm \
           -v /opt/github-stat-collector/config.yml:/app/config.yml \
           -v /opt/github-stat-collector/repos:/app/repos \
-          gcr.io/civic-eagle-enview-dev/github-stat-collector:latest
+          gcr.io/civic-eagle-enview-dev/github-stat-collector:latest \
+          /app/collect-stats.py -c /app/config.yml

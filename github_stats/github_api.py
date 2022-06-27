@@ -64,7 +64,7 @@ class GithubAccess(object):
         self.main_branch = config["repo"]["branches"].get("main", "main")
         self.release_branch = config["repo"]["branches"].get("release", "main")
         self.non_user_events = config["repo"].get("non_user_events", ["schedule"])
-        self.per_page = config.get("query", {}).get("results_per_page", 100)
+        self.per_page = config.get("query", {}).get("results_per_page", 500)
         self.special_logins = config["repo"].get("special_logins", {})
         self.special_names = {v: k for k, v in self.special_logins.items()}
         self.broken_users = config["repo"].get("broken_users", [])
@@ -114,6 +114,7 @@ class GithubAccess(object):
             data = res.json()
             if data:
                 return data, res.links
+            time.sleep(3)
         else:
             return [], {}
 

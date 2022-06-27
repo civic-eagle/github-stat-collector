@@ -14,4 +14,4 @@ RUN apk del g++ musl-dev libffi-dev
 COPY github_stats/ github_stats/
 COPY collect-stats.py .
 
-ENTRYPOINT ["poetry", "run", "python", "/app/collect-stats.py", "-c", "/app/config.yml"]
+ENTRYPOINT ["poetry", "run", "python"]

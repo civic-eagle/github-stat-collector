@@ -108,6 +108,7 @@ class Repo(object):
             yield (branch, commit.commit_time)
         for branch in self.repoobj.branches:
             branch_name = branch.replace("origin/", "")
+            # skip specific branch names in our count
             if branch_name in [
                 "HEAD",
                 self.primary_branches["main"],
@@ -115,6 +116,7 @@ class Repo(object):
             ]:
                 continue
             branch_count += 1
+            # look up the branch to get the last commit time
             remote_id = self.repoobj.lookup_reference(
                 f"refs/remotes/origin/{branch_name}"
             ).target
@@ -125,6 +127,9 @@ class Repo(object):
     def match_bugfixes(self, pr_list):
         """
         Given a list of PRs merge commits, find the matching releases
+
+        A "matching" release in this case is the nearest release in the
+        commit log that is newer than the commit itself
 
         :returns: rough mttr
         :rtype: float
