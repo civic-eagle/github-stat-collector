@@ -133,7 +133,9 @@ def main():
     config = yaml.safe_load(open(args.config, "r", encoding="utf-8").read())
     gh = GithubAccess(config)
 
-    for run in range(int(args.start_timestamp), int(args.stop_timestamp), int(args.timestamp_step)):
+    for run in range(
+        int(args.start_timestamp), int(args.stop_timestamp), int(args.timestamp_step)
+    ):
         timestamp = datetime.utcfromtimestamp(run)
         logger.info(f"Processing data for {timestamp}...")
         influx = InfluxOutput(config, timestamp)
