@@ -12,7 +12,7 @@ from github_stats.github_api import GithubAccess
 from github_stats.outputs.influx import InfluxOutput
 
 SCRIPTDIR = os.path.dirname(os.path.realpath(__file__))
-logger = logging.getLogger("github-stats")
+logger = logging.getLogger("backfill-stats")
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
@@ -91,7 +91,7 @@ def _wait(positions):
     for pos in positions:
         # if we find a position in our list, sleep for the remaining amount of time
         if diff <= pos:
-            time.sleep(pos - diff)
+            sleep_time = int(pos - diff)
             break
     else:
         """
@@ -99,7 +99,9 @@ def _wait(positions):
         So we add the difference of the top of the hour + diff
         and append that to position 0 to wait
         """
-        time.sleep(pos[0] + (3600 - diff))
+        sleep_time = int(pos[0] + (3600 - diff))
+    logger.debug(f"Sleeping for {sleep_time} seconds")
+    time.sleep(sleep_time)
 
 
 def main():
@@ -131,8 +133,9 @@ def main():
     config = yaml.safe_load(open(args.config, "r", encoding="utf-8").read())
     gh = GithubAccess(config)
 
-    for run in range(args.start_timestamp, args.stop_timestamp, args.timestamp_step):
+    for run in range(int(args.start_timestamp), int(args.stop_timestamp), int(args.timestamp_step)):
         timestamp = datetime.utcfromtimestamp(run)
+        logger.info(f"Processing data for {timestamp}...")
         influx = InfluxOutput(config, timestamp)
         gh.load_all_stats(timestamp, args.window)
         influx.format_stats(gh.stats)
