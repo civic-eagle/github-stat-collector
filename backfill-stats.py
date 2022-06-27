@@ -78,6 +78,7 @@ def _hour_diff():
     current_time = time.time()
     hour_floor = int((current_time // 3600) * 3600)
     diff = current_time - hour_floor
+    logger.debug("{diff=}")
     return diff
 
 
@@ -96,10 +97,11 @@ def _wait(positions):
     else:
         """
         diff > pos[-1]
-        So we add the difference of the top of the hour + diff
-        and append that to position 0 to wait
+        This means we're near the top of the hour but past our last position
+        So we need to subtract the diff from a total hour (to get time left in the hour)
+        and add position 0's offset
         """
-        sleep_time = int(pos[0] + (3600 - diff))
+        sleep_time = int(3600 - diff) + positions[0]
     logger.debug(f"Sleeping for {sleep_time} seconds")
     time.sleep(sleep_time)
 
@@ -119,6 +121,7 @@ def main():
         sleep_time = args.sleep_time
     positions = list()
     runs_per_hour = int(3600 / sleep_time)
+    # drop the current time here because we don't need it
     diff = _hour_diff()
     # set our positions around the clock for when the job will run
     # using our diff as a 0-based offset
@@ -126,16 +129,18 @@ def main():
         pos = int(sleep_time * r) + diff
         if pos > 3600:
             pos = pos - 3600
-        positions.append(pos)
+        positions.append(int(pos))
     positions = sorted(positions)
+    logger.debug(f"{positions=}")
 
     # actually set up environment
     config = yaml.safe_load(open(args.config, "r", encoding="utf-8").read())
-    gh = GithubAccess(config)
 
     for run in range(
         int(args.start_timestamp), int(args.stop_timestamp), int(args.timestamp_step)
     ):
+        # we should load GithubAccess every run to ensure we don't lose access tokens/etc.
+        gh = GithubAccess(config)
         timestamp = datetime.utcfromtimestamp(run)
         logger.info(f"Processing data for {timestamp}...")
         influx = InfluxOutput(config, timestamp)

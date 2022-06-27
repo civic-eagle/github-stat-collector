@@ -6,6 +6,7 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 from influxdb_client.domain.write_precision import WritePrecision
 import logging
 import os
+import pprint
 
 # local imports
 from github_stats.outputs import StatsOutput
@@ -61,13 +62,12 @@ class InfluxOutput(StatsOutput):
             for stat in super().format_stats(stats_object)
         ]
         self.output_stat_count = len(self.output_stats)
-        for stat in self.output_stats:
-            self.log.debug(f"Gonna write {stat} to influx")
 
     def write_stats(self):
         self.log.info(
             f"Attempting to write {self.output_stat_count} metrics to Influx..."
         )
+        self.log.debug(f"Writing {pprint.pformat(self.output_stats)} to influx")
         self.write_api.write(
             self.bucket,
             self.org,
