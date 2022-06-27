@@ -139,10 +139,10 @@ def main():
     for run in range(
         int(args.start_timestamp), int(args.stop_timestamp), int(args.timestamp_step)
     ):
-        # we should load GithubAccess every run to ensure we don't lose access tokens/etc.
-        gh = GithubAccess(config)
         timestamp = datetime.utcfromtimestamp(run)
         logger.info(f"Processing data for {timestamp}...")
+        # we should load GithubAccess every run to ensure we don't lose access tokens/etc.
+        gh = GithubAccess(config)
         influx = InfluxOutput(config, timestamp)
         gh.load_all_stats(timestamp, args.window)
         influx.format_stats(gh.stats)
