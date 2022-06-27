@@ -12,6 +12,6 @@ RUN poetry install --no-dev \
 RUN apk del g++ musl-dev libffi-dev
 
 COPY github_stats/ github_stats/
-COPY collect-stats.py .
+COPY *.py .
 
 ENTRYPOINT ["poetry", "run", "python"]
