@@ -89,6 +89,12 @@ class StatsOutput(object):
         stat["description"] = "Average time between commit and release"
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
+        stat["name"] = "avg_windowed_commit_release_time_secs"
+        stat["measurement_type"] = "gauge"
+        stat["value"] = commits["windowed_commit_time"]
+        stat["description"] = "Average time between commit and release within defined collection window"
+        formatted_stats.append(stat)
+        stat = deepcopy(self.tmpobj)
         stat["name"] = "unreleased_commits_count"
         stat["measurement_type"] = "gauge"
         stat["value"] = commits["unreleased_commits"]
