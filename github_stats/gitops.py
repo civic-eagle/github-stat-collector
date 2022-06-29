@@ -5,7 +5,7 @@ import pygit2
 import time
 
 from github_stats.util import load_patterns
-from githus_stats.schema import DEFAULT_WINDOW
+from github_stats.schema import DEFAULT_WINDOW
 
 
 class Repo(object):
@@ -166,8 +166,8 @@ class Repo(object):
         :returns: Avg commit time, count of unreleased commits, count of all commits
         :rtype: tuple(int, int, int)
         """
-        window_end_ts = base_date.utctimestamp()
-        window_start_ts = (base_date - timedelta(window)).utctimestamp()
+        window_end_ts = base_date.timestamp()
+        window_start_ts = (base_date - timedelta(window)).timestamp()
         avg_commit_time = 0
         unreleased_commits = 0
         commits = 0
@@ -211,7 +211,11 @@ class Repo(object):
             avg_commit_time = avg_commit_time / (len(self.releases) + 1)
             # ensure no duplicate releases are counted here
             windowed_releases = list(set(windowed_releases))
-            windowed_commit_time = windowed_commit_time / len(windowed_releases)
+            if windowed_releases:
+                windowed_commit_time = windowed_commit_time / len(windowed_releases)
+            else:
+                # no releases in our window
+                windowed_commit_time = 0
             self.log.debug(
                 f"{avg_commit_time=}, {windowed_commit_time=}, {unreleased_commits=}, {commits=}"
             )
