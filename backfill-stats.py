@@ -144,7 +144,13 @@ def main():
         # we should load GithubAccess every run to ensure we don't lose access tokens/etc.
         gh = GithubAccess(config)
         influx = InfluxOutput(config, timestamp)
-        gh.load_all_stats(timestamp, args.window)
+        # retry stat collection a few times in case we get a failure
+        for _ in range(3):
+            try:
+                gh.load_all_stats(timestamp, args.window)
+                break
+            except Exception:
+                pass
         influx.format_stats(gh.stats)
         influx.write_stats()
         # sleep for however long it takes to get to our next position

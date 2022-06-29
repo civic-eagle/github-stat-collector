@@ -18,10 +18,9 @@ from requests.packages.urllib3.util.retry import Retry
 import time
 import urllib.parse
 
-from github_stats.schema import user_schema
+from github_stats.schema import user_schema, DEFAULT_WINDOW
 from github_stats.schema import user_login_cache as user_login_cache_schema
 from github_stats.schema import stats as stats_schema
-from github_stats.schema import DEFAULT_WINDOW
 from github_stats.gitops import Repo
 from github_stats.util import load_patterns
 
@@ -443,10 +442,12 @@ class GithubAccess(object):
 
         (
             avg_commit_time,
+            windowed_commit_time,
             unreleased_commits,
             total_commits,
-        ) = self.repo.commit_release_matching()
+        ) = self.repo.commit_release_matching(base_date, window)
         self.stats["commits"]["avg_commit_time"] = avg_commit_time
+        self.stats["commits"]["windowed_commit_time"] = windowed_commit_time
         self.stats["commits"]["unreleased_commits"] = unreleased_commits
         self.stats["commits"]["collection_time"] = time.time() - starttime
         self.stats["commits"]["total_commits"] = total_commits

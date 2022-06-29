@@ -1,9 +1,11 @@
+from datetime import datetime, timedelta
 import logging
 import os
 import pygit2
 import time
 
 from github_stats.util import load_patterns
+from githus_stats.schema import DEFAULT_WINDOW
 
 
 class Repo(object):
@@ -152,7 +154,9 @@ class Repo(object):
         self.log.debug(f"MTTR: {mttr}")
         return mttr
 
-    def commit_release_matching(self):
+    def commit_release_matching(
+        self, base_date=datetime.today(), window=DEFAULT_WINDOW
+    ):
         """
         1. Loop through a sorted list of all commits to the repo
         2. find the nearest tagged release to each individual commit
@@ -162,9 +166,13 @@ class Repo(object):
         :returns: Avg commit time, count of unreleased commits, count of all commits
         :rtype: tuple(int, int, int)
         """
+        window_end_ts = base_date.utctimestamp()
+        window_start_ts = (base_date - timedelta(window)).utctimestamp()
         avg_commit_time = 0
         unreleased_commits = 0
         commits = 0
+        windowed_releases = list()
+        windowed_commit_time = 0
         walker = self.repoobj.walk(
             self.main_branch_id, pygit2.GIT_SORT_TOPOLOGICAL | pygit2.GIT_SORT_REVERSE
         )
@@ -172,6 +180,7 @@ class Repo(object):
             timestamp = int(commit.commit_time)
             commit_hex = str(commit.hex)
             commits += 1
+
             # short-circuit evaluation if we're missing releases
             if not self.releases:
                 continue
@@ -189,17 +198,26 @@ class Repo(object):
                     self.log.debug(f"{commit_hex} belongs to {release}")
                     # diff between the release time and the commit time
                     avg_commit_time += release[1] - timestamp
+                    if window_start_ts < release[1] < window_end_ts:
+                        windowed_releases.append(release[0])
+                        windowed_commit_time += release[1] - timestamp
                     break
             else:
                 self.log.debug(f"No release found for {commit_hex}")
                 unreleased_commits += 1
+
         if self.releases:
             # add one additional release to address commits before the initial release that we skip
             avg_commit_time = avg_commit_time / (len(self.releases) + 1)
-            self.log.debug(f"{avg_commit_time=}, {unreleased_commits=}, {commits=}")
-            return avg_commit_time, unreleased_commits, commits
+            # ensure no duplicate releases are counted here
+            windowed_releases = list(set(windowed_releases))
+            windowed_commit_time = windowed_commit_time / len(windowed_releases)
+            self.log.debug(
+                f"{avg_commit_time=}, {windowed_commit_time=}, {unreleased_commits=}, {commits=}"
+            )
+            return avg_commit_time, windowed_commit_time, unreleased_commits, commits
         else:
-            return 0, commits, commits
+            return 0, 0, commits, commits
 
     def branch_commit_log(self, branch_name):
         """
