@@ -11,15 +11,10 @@ Leveraging the Google output requires `poetry add opencensus opencensus-ext-stac
 
 # Backfilling Data
 
-This tool supports a `timestamp` setting that will limit all queries performed to data before the specified time. Using this setting, we can relatively easily backfill data by selecting a starting and ending timestamp and a increment step.
-
-For example:
+We can leverage the `backfill-stats.py` script to loop over longer time ranges and fill in data:
 
 ```bash
-for ts in {1650283200..1652835600..3600}; do
-    echo "Processing $(date -d@$ts)"
-    docker run --rm -v config.yml:/app/config.yml -v repos/:/app/repos gcr.io/civic-eagle-enview-dev/github-stat-collector:latest --timestamp $ts
-done
+/app/backfill-stats.py -c /app/config.yml --start-timestamp 1650283200 --stop-timestamp 1652835600 --timestamp-step 3600 --sleep-time 1800
 ```
 
 Example above would collect data between Mon Apr 18 12:00:00 UTC 2022 and Wednesday, May 18, 2022 1:00:00 AM at one hour intervals. Or put another way, it would perform 720 individual runs of the application.
