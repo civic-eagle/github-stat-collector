@@ -126,18 +126,24 @@ class Repo(object):
             yield (branch_name, commit.commit_time)
         self.log.debug(f"Found {branch_count} branches in the repo")
 
-    def match_bugfixes(self, pr_list):
+    def match_bugfixes(
+        self, pr_list, base_date=datetime.today(), window=DEFAULT_WINDOW
+    ):
         """
         Given a list of PRs merge commits, find the matching releases
 
         A "matching" release in this case is the nearest release in the
         commit log that is newer than the commit itself
 
-        :returns: rough mttr
+        :returns: rough mttr, rough windowed mttr
         :rtype: float
         """
         if not self.releases:
-            return 0
+            return 0, 0
+        window_end_ts = base_date.timestamp()
+        window_start_ts = (base_date - timedelta(window)).timestamp()
+        windowed_mttr = 0
+        windowed_releases = list()
         mttr = 0
         self.log.debug("Tracking MTTR...")
         for pr in pr_list:
@@ -148,11 +154,26 @@ class Repo(object):
                 elif pr[2] <= release[1]:
                     self.log.debug(f"{pr[0]} ({pr[1]}) belongs to {release}")
                     # diff between the release time and the commit time
-                    mttr += release[1] - pr[2]
+                    release_time = release[1] - pr[2]
+                    mttr += release_time
+                    """
+                    add this release to windowed releases
+                    don't worry about duplicates because we can
+                    filter them afterwards
+                    """
+                    if window_start_ts < release[1] < window_end_ts:
+                        windowed_releases.append(release[0])
+                        windowed_mttr += release_time
                     break
         mttr = mttr / len(pr_list)
-        self.log.debug(f"MTTR: {mttr}")
-        return mttr
+        if windowed_releases:
+            # ensure no duplicate releases are counted here
+            windowed_releases = list(set(windowed_releases))
+            windowed_mttr = windowed_mttr / len(windowed_releases)
+        else:
+            windowed_mttr = 0
+        self.log.debug(f"{mttr=}, {windowed_mttr=}")
+        return mttr, windowed_mttr
 
     def commit_release_matching(
         self, base_date=datetime.today(), window=DEFAULT_WINDOW
@@ -163,8 +184,8 @@ class Repo(object):
         3. diff the time between the commit and the release
         4. do a rolling average on number of releases
 
-        :returns: Avg commit time, count of unreleased commits, count of all commits
-        :rtype: tuple(int, int, int)
+        :returns: Avg commit time, avg windowed commit time, count of unreleased commits, count of all commits
+        :rtype: tuple(int, int, int, int)
         """
         window_end_ts = base_date.timestamp()
         window_start_ts = (base_date - timedelta(window)).timestamp()
@@ -197,10 +218,11 @@ class Repo(object):
                 elif timestamp <= release[1]:
                     self.log.debug(f"{commit_hex} belongs to {release}")
                     # diff between the release time and the commit time
-                    avg_commit_time += release[1] - timestamp
+                    release_time = release[1] - timestamp
+                    avg_commit_time += release_time
                     if window_start_ts < release[1] < window_end_ts:
                         windowed_releases.append(release[0])
-                        windowed_commit_time += release[1] - timestamp
+                        windowed_commit_time += release_time
                     break
             else:
                 self.log.debug(f"No release found for {commit_hex}")
@@ -209,9 +231,9 @@ class Repo(object):
         if self.releases:
             # add one additional release to address commits before the initial release that we skip
             avg_commit_time = avg_commit_time / (len(self.releases) + 1)
-            # ensure no duplicate releases are counted here
-            windowed_releases = list(set(windowed_releases))
             if windowed_releases:
+                # ensure no duplicate releases are counted here
+                windowed_releases = list(set(windowed_releases))
                 windowed_commit_time = windowed_commit_time / len(windowed_releases)
             else:
                 # no releases in our window

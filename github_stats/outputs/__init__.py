@@ -132,6 +132,12 @@ class StatsOutput(object):
         stat["description"] = "Mean Time to Resolution for fixes/etc."
         formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
+        stat["name"] = "windowed_mttr_secs"
+        stat["measurement_type"] = "gauge"
+        stat["value"] = stats_object["windowed_mttr"]
+        stat["description"] = "Windowed Mean Time to Resolution for fixes/etc."
+        formatted_stats.append(stat)
+        stat = deepcopy(self.tmpobj)
         stat["name"] = "main_branch_window_commits_total"
         stat["measurement_type"] = "gauge"
         stat["value"] = stats_object["window_main_branch_commits"]
