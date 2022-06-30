@@ -7,7 +7,7 @@ authors = ["John Seekins <john@civiceagle.com>"]
 [tool.poetry.dependencies]
 python = "^3.9"
 regex = "^2022.6.2"
-requests = "^2.28.0"
+requests = "^2.28.1"
 PyYAML = "^6.0"
 influxdb-client = {extras = ["ciso"], version = "^1.30.0"}
 pygit2 = "^1.9.2"
