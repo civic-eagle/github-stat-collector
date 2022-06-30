@@ -135,13 +135,11 @@ class GithubAccess(object):
         datatype = type(data)
         if key and datatype == dict and key in data:
             if isinstance(data[key], list):
-                for k in data[key]:
-                    yield k
+                yield from data[key]
             else:
                 yield data[key]
         elif datatype == list:
-            for k in data:
-                yield k
+            yield from data
         else:
             # just return the entire object as a default
             yield data
@@ -153,13 +151,11 @@ class GithubAccess(object):
             datatype = type(data)
             if key and datatype == dict and key in data:
                 if isinstance(data[key], list):
-                    for k in data[key]:
-                        yield k
+                    yield from data[key]
                 else:
                     yield data[key]
             elif isinstance(data, list):
-                for k in data:
-                    yield k
+                yield from data
             else:
                 yield data
             next_url = links.get("next", dict()).get("url", "")
