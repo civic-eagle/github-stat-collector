@@ -84,7 +84,25 @@ class StatsOutput(object):
                 )
                 continue
             stat = deepcopy(self.tmpobj)
-            if k.startswith("users_"):
+            if k.startswith("repo_stats_contributors_"):
+                """
+                repo_stats_contributors_dependabot[bot]_weeks_2022-06-26 00:00:00_additions
+                """
+                continue
+            elif k.startswith("commits_branch_commits_"):
+                """
+                Branch commit stats...
+                come in like:
+                commits_branch_commits_upgrade-craco-esbuild_commits_total
+                """
+                continue
+            elif k.startswith("pull_requests_labels_"):
+                """
+                PR stats:
+                pull_requests_labels_infrastructure_labelled_prs_total
+                """
+                continue
+            elif k.startswith("users_"):
                 """
                 user stats are interesting...
                 we may see something like:
@@ -94,12 +112,24 @@ class StatsOutput(object):
                 """
                 # chunks = k.removeprefix("users_")
                 continue
-            if k.startswith("workflows_workflows"):
+            elif k.startswith("workflows_workflows_"):
                 """
-                workflow stats look like `workflows_workflows_<name>_<stat>`
-                so we take the first three splits to get the name of the workflow
-                and all splits afterwards for the actual stat name
+                workflow stats
+                workflows_.github/workflows/ci.yml_run_startup_failure_percentage
+                workflows_workflows_.github/workflows/ci.yml_<stat>
                 """
+                continue
+                chunks = k.split("_")[:2]
+                name = "_".join(k.split("_")[2:])
+                k = f"workflows_{name}"
+                stat["labels"]["workflow"] = chunks[-1]
+            elif k.startswith("workflows_"):
+                """
+                workflow stats
+                workflows_.github/workflows/ci.yml_run_startup_failure_percentage
+                workflows_workflows_.github/workflows/ci.yml_<stat>
+                """
+                continue
                 chunks = k.split("_")[:2]
                 name = "_".join(k.split("_")[2:])
                 k = f"workflows_{name}"

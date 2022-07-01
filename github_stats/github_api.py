@@ -50,6 +50,7 @@ class GithubAccess(object):
             method_whitelist=["GET"],
         )
         self._request = requests.Session()
+        self._r_timeout = config.get("request_timeout", 10)
         adapter = HTTPAdapter(max_retries=retry)
         self._request.mount("https://", adapter)
         self._request.headers.update(headers)
@@ -88,7 +89,7 @@ class GithubAccess(object):
         self.user_login_cache = deepcopy(user_login_cache_schema)
         self.stats = deepcopy(stats_schema)
         self.stats["pull_requests"]["labels"] = {
-            label: {
+            label.replace("_", "-"): {
                 "window_labelled_prs_total": 0,
                 "labelled_prs_total": 0,
             }
@@ -100,7 +101,7 @@ class GithubAccess(object):
 
     def _retry_empty(self, url):
         """
-        Occasionally cold-cache queries to Github return empty results.
+        Occasionally queries to Github return empty results.
         We'll set up a retry loop to avoid that (since the built-in
         requests retry object can't retry on results values)
         This wrapper also gives us an easy place to add a default
@@ -108,7 +109,7 @@ class GithubAccess(object):
         a whole timeout object.
         """
         for retry in range(0, 3):
-            res = self._request.get(url, timeout=10)
+            res = self._request.get(url, timeout=self._r_timeout)
             res.raise_for_status()
             data = res.json()
             if data:
@@ -317,7 +318,7 @@ class GithubAccess(object):
 
             # process/count labels of this PR
             for label in pull["labels"]:
-                name = label["name"]
+                name = label["name"].replace("_", "-")
                 for labelname, matches in self.label_matches.items():
                     if name not in matches:
                         continue
