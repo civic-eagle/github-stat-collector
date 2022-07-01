@@ -249,7 +249,7 @@ class GithubAccess(object):
         self.stats["windowed_mttr_secs"] = windowed_mttr
         self.load_releases(base_date, window)
         self.load_workflow_runs(base_date, window)
-        self.stats["total_collection_time_secs"] = time.time() - self.starttime
+        self.stats["collection_time_secs_total"] = time.time() - self.starttime
 
     def load_pull_requests(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
         """
@@ -521,8 +521,7 @@ class GithubAccess(object):
                     self.stats["users"][author]["branches_total"] += 1
                     # 2020-12-30T03:19:29Z (RFC3339)
                     if dt_updated < base_date and dt_updated > td:
-                        self.stats["users"][author]["window_branches_total"] += 1
-                        self.log.debug(f"{branch=}: created {dt_updated}")
+                        self.stats["users"][author]["window_branches"] += 1
 
         self.stats["branches"]["collection_time_secs"] = time.time() - starttime
         self.log.info(
@@ -629,7 +628,7 @@ class GithubAccess(object):
                 continue
             self.stats["repo_stats"]["commit_activity"][str(ts_date)] = {
                 "daily": dict(),
-                "total_commits": week["total"],
+                "commits_total": week["total"],
             }
             for date_offset in range(0, 7):
                 newdate = ts_date + timedelta(date_offset)
@@ -647,7 +646,7 @@ class GithubAccess(object):
                 continue
             user = self._cache_user_login(contributor["author"]["login"])
             self.stats["repo_stats"]["contributors"][user] = {
-                "total_commits": contributor["total"],
+                "commits_total": contributor["total"],
                 "weeks": dict(),
             }
             for week in contributor["weeks"]:
@@ -694,7 +693,7 @@ class GithubAccess(object):
                 continue
             day_no, hour, commits = hourtuple
             day_name = calendar.day_name[day_no]
-            self.stats["repo_stats"]["punchcard"]["total_commits"] += commits
+            self.stats["repo_stats"]["punchcard"]["commits_total"] += commits
             if day_name in self.stats["repo_stats"]["punchcard"]["days"]:
                 self.stats["repo_stats"]["punchcard"]["days"][day_name][hour] = commits
                 self.stats["repo_stats"]["punchcard"]["days"][day_name][
@@ -757,15 +756,15 @@ class GithubAccess(object):
                 self.log.debug(f"Release {name} was created in the future. Skipping.")
                 continue
             if dt_created <= base_date and dt_created >= td:
-                self.stats["releases"]["window_releases_total"] += 1
-                self.stats["users"][user]["window_releases_total"] += 1
-            self.stats["releases"]["total_releases"] += 1
+                self.stats["releases"]["window_releases"] += 1
+                self.stats["users"][user]["window_releases"] += 1
+            self.stats["releases"]["releases_total"] += 1
             self.stats["releases"]["releases"][name] = {
                 "created_at": str(dt_created),
                 "author": user,
                 "body": release["body"],
             }
-            self.stats["users"][user]["total_releases"] += 1
+            self.stats["users"][user]["releases_total"] += 1
         self.stats["releases"]["collection_time_secs"] = time.time() - starttime
         self.log.info(
             f"Loaded release details in {self.stats['releases']['collection_time_secs']} seconds"
@@ -923,5 +922,5 @@ class GithubAccess(object):
                 ] = 0
         self.stats["workflows"]["collection_time_secs"] = time.time() - starttime
         self.log.info(
-            f"Loaded workflow details in {self.stats['workflows']['collection_time']} seconds"
+            f"Loaded workflow details in {self.stats['workflows']['collection_time_secs']} seconds"
         )

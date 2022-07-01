@@ -58,7 +58,7 @@ def main():
     timestamp = datetime.utcfromtimestamp(args.timestamp)
     starttime = time.time()
     gh = GithubAccess(config)
-    influx = InfluxOutput(config, timestamp)
+    influx = InfluxOutput(config, timestamp.timestamp())
     gh.load_all_stats(timestamp, args.window)
     influx.format_stats(gh.stats)
     influx.write_stats()
