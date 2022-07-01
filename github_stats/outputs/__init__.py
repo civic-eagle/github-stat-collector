@@ -36,6 +36,9 @@ class StatsOutput(object):
             if isinstance(value, dict):
                 yield from self._recurse_stats(value, new_prefix)
             else:
+                if not isinstance(value, float) and not isinstance(value, int):
+                    # skip any values that aren't actually...you know...values
+                    continue
                 yield new_prefix, value
 
     def format_stats(self, stats_object):
@@ -81,6 +84,26 @@ class StatsOutput(object):
                 )
                 continue
             stat = deepcopy(self.tmpobj)
+            if k.startswith("users_"):
+                """
+                user stats are interesting...
+                we may see something like:
+                users_mothalit_merged_pull_requests_total
+                or something like:
+                users_dependabot[bot]_workflows_security scans_skipped
+                """
+                # chunks = k.removeprefix("users_")
+                continue
+            if k.startswith("workflows_workflows"):
+                """
+                workflow stats look like `workflows_workflows_<name>_<stat>`
+                so we take the first three splits to get the name of the workflow
+                and all splits afterwards for the actual stat name
+                """
+                chunks = k.split("_")[:2]
+                name = "_".join(k.split("_")[2:])
+                k = f"workflows_{name}"
+                stat["labels"]["workflow"] = chunks[-1]
             stat["name"] = k
             if not k.endswith("total"):
                 stat["measurement_type"] = "gauge"

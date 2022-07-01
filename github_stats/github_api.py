@@ -249,7 +249,7 @@ class GithubAccess(object):
         self.stats["windowed_mttr_secs"] = windowed_mttr
         self.load_releases(base_date, window)
         self.load_workflow_runs(base_date, window)
-        self.stats["collection_time_secs_total"] = time.time() - self.starttime
+        self.stats["collection_time_secs"] = time.time() - self.starttime
 
     def load_pull_requests(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
         """
@@ -759,11 +759,6 @@ class GithubAccess(object):
                 self.stats["releases"]["window_releases"] += 1
                 self.stats["users"][user]["window_releases"] += 1
             self.stats["releases"]["releases_total"] += 1
-            self.stats["releases"]["releases"][name] = {
-                "created_at": str(dt_created),
-                "author": user,
-                "body": release["body"],
-            }
             self.stats["users"][user]["releases_total"] += 1
         self.stats["releases"]["collection_time_secs"] = time.time() - starttime
         self.log.info(

@@ -70,7 +70,6 @@ stats = {
     },
     "releases": {
         "collection_time_secs": 0,
-        "releases": dict(),
         "releases_total": 0,
         "window_releases": 0,
     },
