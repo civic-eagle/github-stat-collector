@@ -92,7 +92,7 @@ class GithubAccess(object):
                 "window_labelled_prs_total": 0,
                 "labelled_prs_total": 0,
             }
-            for label in self.label_matches
+            for label in self.label_matches.keys()
         }
         self.stats["tag_matches"] = {t: 0 for t in self.tag_matches.keys()}
         self.starttime = time.time()
@@ -286,11 +286,11 @@ class GithubAccess(object):
 
             # worth also catching pull requests created in our window
             if created < base_date and created > td:
-                self.stats["pull_requests"]["window_pull_requests_total"] += 1
-                self.stats["users"][author]["window_pull_requests_total"] += 1
+                self.stats["pull_requests"]["window_pull_requests"] += 1
+                self.stats["users"][author]["window_pull_requests"] += 1
             elif modified_time < base_date and modified_time > td:
-                self.stats["pull_requests"]["window_pull_requests_total"] += 1
-                self.stats["users"][author]["window_pull_requests_total"] += 1
+                self.stats["pull_requests"]["window_pull_requests"] += 1
+                self.stats["users"][author]["window_pull_requests"] += 1
 
             # Calculate avg PR time
             created = datetime.strptime(pull["created_at"], "%Y-%m-%dT%H:%M:%SZ")
@@ -322,7 +322,9 @@ class GithubAccess(object):
                     if name not in matches:
                         continue
                     self.log.debug(f"{title}: {name} ({matches=}) for {label}")
-                    self.stats["pull_requests"]["labels"][labelname]["total_prs"] += 1
+                    self.stats["pull_requests"]["labels"][labelname][
+                        "labelled_prs_total"
+                    ] += 1
                     if modified_time < base_date and modified_time > td:
                         self.stats["pull_requests"]["labels"][labelname][
                             "window_labelled_prs_total"
@@ -334,10 +336,12 @@ class GithubAccess(object):
                             "window_labelled_prs_total": 0,
                         }
                     else:
-                        self.stats["pull_requests"]["labels"][name]["prs_total"] += 1
+                        self.stats["pull_requests"]["labels"][name][
+                            "labelled_prs_total"
+                        ] += 1
                     if modified_time < base_date and modified_time > td:
                         self.stats["pull_requests"]["labels"][name][
-                            "window_prs_total"
+                            "window_labelled_prs_total"
                         ] += 1
                 if merged_ts and name in self.pr_bug_matches:
                     self.stats["bug_matches"].append((title, commit, merged_ts))
@@ -413,8 +417,8 @@ class GithubAccess(object):
                 except Exception:
                     user = "unknown"
                 self.stats["users"][user]["commits_total"] += 1
-                if commit["time"] > self.stats["users"][user]["last_commit_time"]:
-                    self.stats["users"][user]["last_commit_time"] = commit["time"]
+                if commit["time"] > self.stats["users"][user]["last_commit_time_secs"]:
+                    self.stats["users"][user]["last_commit_time_secs"] = commit["time"]
                 if td_ts < commit["time"] < base_ts:
                     self.stats["commits"]["window_commits"] += 1
                     self.stats["users"][user]["window_commits_total"] += 1
@@ -475,9 +479,11 @@ class GithubAccess(object):
             self.log.debug(f"Processing meta data for {branch}")
             self.stats["branches"]["branches_total"] += 1
             if branch == self.main_branch:
-                self.stats["main_branch_commits"] += 1
+                self.stats["main_branch_commits_total"] += 1
+                if td_ts < int(last_commit) < base_ts:
+                    self.stats["window_main_branch_commits"] += 1
             if td_ts < int(last_commit) < base_ts:
-                self.stats["branches"]["window_branches_total"] += 1
+                self.stats["branches"]["window_branches"] += 1
 
             """
             Branch author data is harder to suss out from git
