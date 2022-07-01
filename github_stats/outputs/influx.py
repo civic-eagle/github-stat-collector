@@ -35,7 +35,6 @@ class InfluxOutput(StatsOutput):
             meta["bucket"] = self.bucket
         if self.org:
             meta["org"] = self.org
-        self.prefix = influx_config.get("metric_prefix", "")
         self.client = InfluxDBClient(**meta)
         self.write_api = self.client.write_api(write_options=SYNCHRONOUS)
         self.output_stats = list()
@@ -54,7 +53,7 @@ class InfluxOutput(StatsOutput):
         """
         self.output_stats = [
             {
-                "measurement": "_".join([self.prefix] + stat["name"].split("_")[:-1]),
+                "measurement": "_".join(stat["name"].split("_")[:-1]),
                 "tags": stat["labels"],
                 "time": int(stat["timestamp"].timestamp()),
                 "fields": {stat["name"].split("_")[-1]: stat["value"]},

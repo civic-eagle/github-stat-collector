@@ -14,6 +14,7 @@ class StatsOutput(object):
         self.tmpobj["labels"] = deepcopy(default_labels)
         if timestamp > 0.0:
             self.tmpobj["timestamp"] = timestamp
+        self.prefix = config.get("metric_prefix", "")
         self.main_branch = config["repo"]["branches"].get("main", "main")
         self.release_branch = config["repo"]["branches"].get("release", "main")
         self.broken_users = config["repo"].get("broken_users", [])
@@ -21,7 +22,6 @@ class StatsOutput(object):
         portions of the incoming stat structure that don't match regular
         formatting, so we need to handle them separately
         """
-        self.skip_keys = ["punchcard"]
         # self.user_time_filter = config["repo"].get("user_time_filter", False)
 
     def _recurse_stats(self, stats_object, prefix=""):
@@ -84,9 +84,11 @@ class StatsOutput(object):
                 )
                 continue
             stat = deepcopy(self.tmpobj)
-            if k.startswith("repo_stats_contributors_"):
+            if k.startswith("repo_stats_"):
                 """
                 repo_stats_contributors_dependabot[bot]_weeks_2022-06-26 00:00:00_additions
+                repo_stats_commit_activity_2022-06-26 00:00:00_daily_2022-06-28 00:00:00
+                repo_stats_code_frequency_2022-06-26 00:00:00_additions
                 """
                 continue
             elif k.startswith("commits_branch_commits_"):
@@ -95,7 +97,7 @@ class StatsOutput(object):
                 come in like:
                 commits_branch_commits_upgrade-craco-esbuild_commits_total
                 """
-                continue
+                pass
             elif k.startswith("pull_requests_labels_"):
                 """
                 PR stats:
@@ -105,9 +107,7 @@ class StatsOutput(object):
             elif k.startswith("users_"):
                 """
                 user stats are interesting...
-                we may see something like:
                 users_mothalit_merged_pull_requests_total
-                or something like:
                 users_dependabot[bot]_workflows_security scans_skipped
                 """
                 # chunks = k.removeprefix("users_")
@@ -134,7 +134,11 @@ class StatsOutput(object):
                 name = "_".join(k.split("_")[2:])
                 k = f"workflows_{name}"
                 stat["labels"]["workflow"] = chunks[-1]
-            stat["name"] = k
+            if self.prefix:
+                stat["name"] = f"{self.prefix}_{k}"
+            else:
+                stat["name"] = k
+            # because of earlier assumptions, we can switch type safely
             if not k.endswith("total"):
                 stat["measurement_type"] = "gauge"
             stat["value"] = v

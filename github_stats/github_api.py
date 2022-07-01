@@ -782,7 +782,7 @@ class GithubAccess(object):
         url = f"/repos/{self.repo_name}/actions/runs"
         # only request workflow detail within window
         for run in self._github_query(url, key="workflow_runs"):
-            workflow = run["name"]
+            workflow = run["name"].replace("_", "-")
             status = run["conclusion"]
             # reasons to skip
             if workflow in self.ignored_workflows:
