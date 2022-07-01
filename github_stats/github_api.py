@@ -169,24 +169,25 @@ class GithubAccess(object):
         :returns: User's name
         :rtype: str
         """
-        if login in self.user_login_cache["logins"]:
-            return self.user_login_cache["logins"][login]
+        clean_login = login.replace("_", "-")
+        if clean_login in self.user_login_cache["logins"]:
+            return self.user_login_cache["logins"][clean_login]
         url = f"/users/{login}"
         try:
             user = [u for u in self._github_query(url)][0]
         except Exception as e:
             self.log.warning(f"{login} doesn't match a Github user! {e}")
             return ""
-        self.log.debug(f"Caching {user} for {login}")
-        name = user["name"] or login
+        self.log.debug(f"Caching {user} for {clean_login}")
+        name = user["name"] or clean_login
         if not user["name"] and name in self.special_names:
             name = self.special_names[name]
-        self.user_login_cache["logins"][login] = name
-        self.user_login_cache["names"][name] = login
+        self.user_login_cache["logins"][clean_login] = name
+        self.user_login_cache["names"][name] = clean_login
         if name not in self.stats["users"]:
             self.stats["users"][name] = deepcopy(user_schema)
-        self.log.debug(f"Returned name: {self.user_login_cache['logins'][login]}")
-        return self.user_login_cache["logins"][login]
+        self.log.debug(f"Returned name: {self.user_login_cache['logins'][clean_login]}")
+        return self.user_login_cache["logins"][clean_login]
 
     def _cache_user_name(self, name):
         """
@@ -414,7 +415,9 @@ class GithubAccess(object):
                     )
                     continue
                 try:
-                    user = self._cache_user_name(commit["author"].split(" <")[0])
+                    user = self._cache_user_name(
+                        commit["author"].split(" <")[0].replace("_", "-")
+                    )
                 except Exception:
                     user = "unknown"
                 self.stats["users"][user]["commits_total"] += 1
@@ -805,7 +808,9 @@ class GithubAccess(object):
                 name = run["head_commit"]["author"]["name"]
                 if name in self.broken_users:
                     continue
-                user = self._cache_user_name(run["head_commit"]["author"]["name"])
+                user = self._cache_user_name(
+                    run["head_commit"]["author"]["name"].replace("_", "-")
+                )
             event = run["event"]
             # Track event stats
             if event in self.stats["workflows"]["events"]:
