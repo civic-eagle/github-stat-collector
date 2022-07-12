@@ -5,6 +5,7 @@ DEFAULT_WINDOW = 1
 
 user_schema = {
     "avg_pr_time_open_secs": 0,
+    "user": str(),
     "branches": list(),
     "branches_total": 0,
     "closed_pull_requests_total": 0,

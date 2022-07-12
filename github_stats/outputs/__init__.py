@@ -1,9 +1,9 @@
-# from datetime import timedelta
+from datetime import timedelta
 from copy import deepcopy
 import logging
 from pprint import pformat
 
-from github_stats.schema import tmp_statobj
+from github_stats.schema import tmp_statobj, user_schema
 
 
 class StatsOutput(object):
@@ -18,13 +18,26 @@ class StatsOutput(object):
         self.main_branch = config["repo"]["branches"].get("main", "main")
         self.release_branch = config["repo"]["branches"].get("release", "main")
         self.broken_users = config["repo"].get("broken_users", [])
-        """
-        portions of the incoming stat structure that don't match regular
-        formatting, so we need to handle them separately
-        """
-        # self.user_time_filter = config["repo"].get("user_time_filter", False)
+        time_filter = config["repo"].get("user_time_filter_days", False)
+        if time_filter:
+            self.user_time_filter = timedelta(days=time_filter)
+        else:
+            self.user_time_filter = None
+        self.dropped_users = 0
+        self.accepted_users = 0
 
     def _recurse_stats(self, stats_object, prefix=""):
+        """
+        Hacky recursion to find and somewhat format
+        all incoming stats
+        Doing this means we don't have to manually add stats as they change
+
+        :returns: metric name and value
+        :rtype: tuple
+        """
+
+        if self.user_time_filter:
+            td = (stats_object["collection_date"] - self.user_time_filter).timestamp()
         for name, value in stats_object.items():
             if name in self.skip_keys:
                 continue
@@ -34,10 +47,22 @@ class StatsOutput(object):
             else:
                 new_prefix = str(name)
             if isinstance(value, dict):
+                if self.user_time_filter and value.keys() == user_schema.keys():
+                    if value["last_commit_time_secs"] < td:
+                        self.log.warning(
+                            f"{value['user']}'s last commit time ({value['last_commit_time_secs']}) outside filter window...dropping"
+                        )
+                        self.dropped_users += 1
+                        continue
+                    else:
+                        self.accepted_users += 1
                 yield from self._recurse_stats(value, new_prefix)
             else:
                 if not isinstance(value, float) and not isinstance(value, int):
                     # skip any values that aren't actually...you know...values
+                    self.log.debug(
+                        f"Skipping {value} (for {name}) because it isn't a number"
+                    )
                     continue
                 yield new_prefix, value
 
@@ -56,10 +81,6 @@ class StatsOutput(object):
         Then we can process any additional stats or formatting
         changes needed for individual outputs.
 
-        Each "section" below is simply a group of metrics being
-        re-formatted from the initial collection. Sectioning just helps
-        us find groups easier
-
         basic format for returned stats:
              {'description': 'punchcard count of commits per day',
               'labels': {'day': 'Sunday', 'repository_name': 'repo1'},
@@ -70,12 +91,6 @@ class StatsOutput(object):
         :returns: list of stats ready to ship
         :rtype: list
         """
-        # drop users whose commits are outside a defined window
-        # td = (
-        #     stats_object["collection_date"] - timedelta(days=stats_object["window"])
-        # ).timestamp()
-        # dropped_users = 0
-        # accepted_users = 0
         formatted_stats = list()
         for k, v in self._recurse_stats(stats_object):
             if k in self.broken_users:
@@ -118,7 +133,6 @@ class StatsOutput(object):
                 workflows_.github/workflows/ci.yml_run_startup_failure_percentage
                 workflows_workflows_.github/workflows/ci.yml_<stat>
                 """
-                continue
                 chunks = k.split("_")[:2]
                 name = "_".join(k.split("_")[2:])
                 k = f"workflows_{name}"

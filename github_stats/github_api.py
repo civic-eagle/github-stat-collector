@@ -186,6 +186,7 @@ class GithubAccess(object):
         self.user_login_cache["names"][name] = clean_login
         if name not in self.stats["users"]:
             self.stats["users"][name] = deepcopy(user_schema)
+            self.stats["users"][name]["user"] = name
         self.log.debug(f"Returned name: {self.user_login_cache['logins'][clean_login]}")
         return self.user_login_cache["logins"][clean_login]
 
@@ -222,6 +223,7 @@ class GithubAccess(object):
             # we rely on the caching function to add the user properly
             _ = self._cache_user_login(contributor["login"])
         self.stats["users"]["unknown"] = deepcopy(user_schema)
+        self.stats["users"]["unknown"]["user"] = "unknown"
         self.contributor_collection_time = time.time() - starttime
         self.log.info(
             f"Loaded contributors in {self.contributor_collection_time} seconds"
