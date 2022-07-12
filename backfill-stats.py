@@ -143,7 +143,7 @@ def main():
         logger.info(f"Processing data for {timestamp}...")
         # we should load GithubAccess every run to ensure we don't lose access tokens/etc.
         gh = GithubAccess(config)
-        influx = InfluxOutput(config, timestamp)
+        influx = InfluxOutput(config, timestamp.timestamp())
         # retry stat collection a few times in case we get a failure
         for _ in range(3):
             try:
