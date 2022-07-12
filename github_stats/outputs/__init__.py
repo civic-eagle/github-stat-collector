@@ -14,7 +14,7 @@ class StatsOutput(object):
         self.tmpobj["labels"] = deepcopy(default_labels)
         if timestamp > 0.0:
             self.tmpobj["timestamp"] = timestamp
-        self.prefix = config.get("metric_prefix", "")
+        self.prefix = config.get("metric_prefix", "").strip("_")
         self.main_branch = config["repo"]["branches"].get("main", "main")
         self.release_branch = config["repo"]["branches"].get("release", "main")
         self.broken_users = config["repo"].get("broken_users", [])
