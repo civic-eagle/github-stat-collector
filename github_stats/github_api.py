@@ -808,7 +808,11 @@ class GithubAccess(object):
                 name = run["head_commit"]["author"]["name"]
                 if name in self.broken_users:
                     continue
-                user = self._cache_user_name(run["head_commit"]["author"]["name"])
+                try:
+                    user = self._cache_user_name(name)
+                except Exception:
+                    self.log.warning(f"{name} doesn't exist in user cache or additional configs")
+                    continue
             event = run["event"]
             # Track event stats
             if event in self.stats["workflows"]["events"]:
