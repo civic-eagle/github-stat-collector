@@ -640,6 +640,9 @@ class GithubAccess(object):
             if not contributor:
                 self.log.warning(f"Received empty reply from {url}...")
                 continue
+            if not contributor["author"]:
+                self.log.warning(f"Bad contributor object {contributor}")
+                continue
             user = self._cache_user_login(contributor["author"]["login"])
             self.stats["repo_stats"]["contributors"][user] = {
                 "total_commits": contributor["total"],
