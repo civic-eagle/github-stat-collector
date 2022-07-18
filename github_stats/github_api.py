@@ -811,7 +811,9 @@ class GithubAccess(object):
                 try:
                     user = self._cache_user_name(name)
                 except Exception:
-                    self.log.warning(f"{name} doesn't exist in user cache or additional configs")
+                    self.log.warning(
+                        f"{name} doesn't exist in user cache or additional configs"
+                    )
                     continue
             event = run["event"]
             # Track event stats
