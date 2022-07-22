@@ -1,105 +1,114 @@
 """
 Defaults for some internal data
 """
-from typing import TypedDict
+from datetime import datetime
+from typing import TypedDict, Dict, Optional
 
 DEFAULT_WINDOW = 1
 
+
+class Metric(TypedDict):
+    description: str
+    name: str
+    type: str
+    labels: Optional[Dict[str, str]]
+    value: float
+
+
 class Workflow(TypedDict):
-    retries: int
     last_run: None
-    window_runs_total: int
+    retries: Metric
     runs: dict
+    window_runs_total: Metric
 
-workflow_schema = {
-    "retries": 0,
-    "last_run": None,
-    "window_runs_total": 1,
-    "runs": dict(),
-}
 
-user_schema = {
-    "avg_pr_time_open_secs": 0,
-    "user": str(),
-    "branches": list(),
-    "branches_total": 0,
-    "closed_pull_requests_total": 0,
-    "commits_total": 0,
-    "draft_pull_requests_total": 0,
-    "events": dict(),
-    "last_commit_time_secs": 0,
-    "merged_pull_requests_total": 0,
-    "open_pull_requests_total": 0,
-    "pr_time_open_secs_total": 0,
-    "pull_requests_total": 0,
-    "releases_total": 0,
-    "window_branches": 0,
-    "window_commits": 0,
-    "window_pull_requests": 0,
-    "window_releases": 0,
-    "workflows": dict(),
-    "workflow_totals": dict(),
-}
+class User(TypedDict):
+    avg_pr_time_open_secs: Metric
+    branches_total: Metric
+    closed_pull_requests_total: Metric
+    commits_total: Metric
+    draft_pull_requests_total: Metric
+    events: Optional[dict] = None
+    last_commit_time_secs: Metric
+    merged_pull_requests_total: Metric
+    open_pull_requests_total: Metric
+    pr_time_open_secs_total: Metric
+    pull_requests_total: Metric
+    releases_total: Metric
+    user: str
+    window_branches: Metric
+    window_commits: Metric
+    window_pull_requests: Metric
+    window_releases: Metric
+    workflows: Dict[str, Workflow]
+    workflow_totals: Optional[dict] = None
 
-user_login_cache = {
-    "names": dict(),
-    "logins": dict(),
-}
 
-stats = {
-    "branches_total": 0,
-    "branches_collection_time_secs": 0,
-    "empty_branches_total": 0,
-    "protected_branches": 0,
-    "window_branches": 0,
-    "collection_date": None,
-    "window": None,
-    "commits_collection_time_secs": 0,
-    "avg_commit_time_secs": 0,
-    "branch_commits": dict(),
-    "commits_total": 0,
-    "commits_window_total": 0,
-    "unreleased_commits_total": 0,
-    # count matching tags as we pass through PRs/etc.
-    "tag_matches": {},
+class LabelledPRs(TypedDict):
+    labelled_prs_total: Metric
+    window_labelled_prs_total: Metric
+
+
+class UserLoginCache(TypedDict):
+    logins: Dict[str, str]
+    names: Dict[str, str]
+
+
+class Stats(TypedDict):
+    avg_commit_time_secs: Metric
+    branches_total: Metric
+    branches_collection_time_secs: Metric
     # track PRs with labels/patterns that match our definition of a bug
-    "bug_matches": [],
-    "mttr_secs": 0,
-    "windowed_mttr_secs": 0,
-    "main_branch_commits_total": 0,
-    "window_main_branch_commits": 0,
-    "avg_pr_time_open_secs": 0,
-    "closed_pull_requests_total": 0,
-    "release_collection_time_secs": 0,
-    "draft_pull_requests_total": 0,
-    "pr_labels": dict(),
-    "merged_pull_requests_total": 0,
-    "open_pull_requests_total": 0,
-    "pull_requests_total": 0,
-    "pr_time_open_secs_total": 0,
-    "window_pull_requests": 0,
-    "pr_collection_time_secs": 0,
-    "releases_total": 0,
-    "window_releases": 0,
-    "code_frequency": dict(),
-    "total_collection_time_secs": 0,
-    "commit_activity": dict(),
-    "contributors": dict(),
-    "punchcard": {
-        "commits_total": 0,
-        "sorted_days": list(),
-        "days": dict(),
-    },
+    bug_matches: list
+    code_frequency: dict
+    collection_date: datetime
+    commit_activity: dict
+    commits_collection_time_secs: Metric
+    contributor_collection_time_secs: Metric
+    contributors: dict
+    empty_branches_total: Metric
+    branch_commits: dict
+    commits_total: Metric
+    commits_window_total: Metric
+    mttr_secs: Metric
+    main_branch_commits_total: Metric
+    window_main_branch_commits: Metric
+    avg_pr_time_open_secs: Metric
+    closed_pull_requests_total: Metric
+    draft_pull_requests_total: Metric
+    merged_pull_requests_total: Metric
+    open_pull_requests_total: Metric
+    pull_requests_total: Metric
+    pr_collection_time_secs: Metric
+    pr_labels: Dict[str, Metric]
+    pr_time_open_secs_total: Metric
+    protected_branches_total: Metric
+    release_collection_time_secs: Metric
+    releases_total: Metric
+    # count matching tags as we pass through PRs/etc.
+    tag_matches: dict
+    total_collection_time_secs: Metric
+    unreleased_commits_total: Metric
+    users: Dict[str, User]
+    window: int
+    window_branches_total: Metric
+    window_pull_requests: Metric
+    window_releases: Metric
+    windowed_mttr_secs: Metric
+    workflow_collection_time_secs: Metric
+    workflow_events: dict
+    workflows: Dict[Workflow]
+    # "punchcard": {
+    #    "commits_total": 0,
+    #    "sorted_days": list(),
+    #    "days": dict(),
+    # },
     # "code_scanning": {
     #     "open": dict(),
     #     "closed": dict(),
     #     "dismissed": dict(),
     # },
-    "users": dict(),
-    "workflow_events": dict(),
-    "workflows": dict(),
-    "workflow_collection_time_secs": 0,
-}
+
 
 tmp_statobj = {
     "description": "",

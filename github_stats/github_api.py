@@ -7,7 +7,6 @@ A general note:
     Of course, this pattern isn't perfect, and can be a bit confusing to read at times.
 """
 import calendar
-from copy import deepcopy
 from datetime import datetime, timedelta
 import logging
 import os
@@ -16,11 +15,17 @@ import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 import time
+from typing import Optional
 import urllib.parse
 
-from github_stats.schema import user_schema, DEFAULT_WINDOW, workflow_schema
-from github_stats.schema import user_login_cache as user_login_cache_schema
-from github_stats.schema import stats as stats_schema
+from github_stats.schema import (
+    Metric,
+    UserLoginCache,
+    User,
+    Stats,
+    Workflow,
+    DEFAULT_WINDOW,
+)
 from github_stats.gitops import Repo
 from github_stats.util import load_patterns
 
@@ -68,6 +73,8 @@ class GithubAccess(object):
         self.special_logins = config["repo"].get("special_logins", {})
         self.special_names = {v: k for k, v in self.special_logins.items()}
         self.broken_users = config["repo"].get("broken_users", [])
+        self.empty_retry_sleep = config.get("empty_retry_sleep", 3)
+        self.empty_retry_count = config.get("empty_retry_count", 3)
 
         self.tag_matches, self.bug_matches, self.pr_bug_matches = load_patterns(
             config["repo"].get("tag_patterns", []),
@@ -86,16 +93,71 @@ class GithubAccess(object):
         Actual stats object
         """
         self.contributor_collection_time = 0
-        self.user_login_cache = deepcopy(user_login_cache_schema)
-        self.stats = deepcopy(stats_schema)
-        self.stats["pull_requests"]["labels"] = {
+        self.user_login_cache = UserLoginCache(logins=dict(), names=dict())
+        self.stats = Stats(
+            pull_requests_total=Metric(
+                value=0,
+                name="pull_requests_total",
+                description="All pull requests discovered in repo",
+                type="counter",
+            ),
+            open_pull_requests_total=Metric(
+                value=0,
+                name="open_pull_requests_total",
+                description="All open pull requests discovered in repo",
+                type="counter",
+            ),
+            draft_pull_requests_total=Metric(
+                value=0,
+                name="draft_pull_requests_total",
+                description="All draft pull requests discovered in repo",
+                type="counter",
+            ),
+            closed_pull_requests_total=Metric(
+                value=0,
+                name="closed_pull_requests_total",
+                description="All closed pull requests discovered in repo",
+                type="counter",
+            ),
+            merged_pull_requests_total=Metric(
+                value=0,
+                name="merged_pull_requests_total",
+                description="All merged pull requests discovered in repo",
+                type="counter",
+            ),
+            window_pull_requests=Metric(
+                value=0,
+                name="window_pull_requests",
+                description="All pull requests discovered in repo in our collection window",
+                type="gauge",
+            ),
+        )
+        self.stats["pr_labels"] = {
             label.replace("_", "-"): {
-                "window_labelled_prs_total": 0,
-                "labelled_prs_total": 0,
+                "window_labelled_prs_total": Metric(
+                    name="window_labelled_prs_total",
+                    value=0,
+                    description="Number of PRs with a particular label in our collection window",
+                    type="gauge",
+                ),
+                "labelled_prs_total": Metric(
+                    name="labelled_prs_total",
+                    value=0,
+                    description="Total number of PRs with a particular label",
+                    type="counter",
+                ),
             }
             for label in self.label_matches.keys()
         }
-        self.stats["tag_matches"] = {t: 0 for t in self.tag_matches.keys()}
+        self.stats["tag_matches"] = {
+            t: Metric(
+                name=t,
+                value=0,
+                description="PRs associated with a particular tag or regex pattern",
+                type="gauge",
+            )
+            for t in self.tag_matches.keys()
+        }
         self.starttime = time.time()
         self._load_contributors()
 
@@ -108,17 +170,19 @@ class GithubAccess(object):
         timeout to the requests calls without having to set up
         a whole timeout object.
         """
-        for retry in range(0, 3):
+        for retry in range(self.empty_retry_count):
             res = self._request.get(url, timeout=self._r_timeout)
             res.raise_for_status()
             data = res.json()
             if data:
                 return data, res.links
-            time.sleep(3)
+            time.sleep(self.empty_retry_sleep)
         else:
             return [], {}
 
-    def _github_query(self, url, key=None, params=None):
+    def _github_query(
+        self, url: str, key: Optional[str] = None, params: Optional[dict] = None
+    ):
         """
         Query paginated endpoint from Github
 
@@ -161,7 +225,7 @@ class GithubAccess(object):
                 yield data
             next_url = links.get("next", dict()).get("url", "")
 
-    def _cache_user_login(self, login):
+    def _cache_user_login(self, login: str) -> str:
         """
         Return user's name based on their Github login
         (this is so we can avoid having two keys for the same user)
@@ -185,12 +249,90 @@ class GithubAccess(object):
         self.user_login_cache["logins"][clean_login] = name
         self.user_login_cache["names"][name] = clean_login
         if name not in self.stats["users"]:
-            self.stats["users"][name] = deepcopy(user_schema)
-            self.stats["users"][name]["user"] = name
+            self.stats["users"][name] = User(
+                user=name,
+                avg_pr_time_open_secs=Metric(
+                    value=0,
+                    labels={"user": user},
+                    description="Time a PR stays open for a specific user",
+                    name="users_avg_user_pr_time_open_secs",
+                    type="gauge",
+                ),
+                branches_total=Metric(
+                    value=0,
+                    labels={"user": user},
+                    description="all branches a owned by a user",
+                    name="users_branches_total",
+                    type="counter",
+                ),
+                closed_pull_requests_total=Metric(
+                    value=0,
+                    labels={"user": user},
+                    description="All PRs closed by a user",
+                    name="users_closed_pull_requests_total",
+                    type="counter",
+                ),
+                commits_total=Metric(
+                    value=0,
+                    labels={"user": user},
+                    description="Commits by a user",
+                    name="users_commits_total",
+                    type="counter",
+                ),
+                draft_pull_requests_total=Metric(
+                    value=0,
+                    labels={"user": user},
+                    description="All draft PRs by a user",
+                    name="users_draft_pull_requests_total",
+                    type="counter",
+                ),
+                last_commit_time_secs=Metric(
+                    value=0,
+                    labels={"user": user},
+                    description="Timestamp of last commit for a user",
+                    name="users_last_commit_time_secs",
+                    type="gauge",
+                ),
+                merged_pull_requests_total=Metric(
+                    value=0,
+                    labels={"user": user},
+                    description="All PRs merged by a user",
+                    name="users_merged_pull_requests_total",
+                    type="counter",
+                ),
+                open_pull_requests_total=Metric(
+                    value=0,
+                    labels={"user": user},
+                    description="All PRs closed by a user",
+                    name="users_open_pull_requests_total",
+                    type="counter",
+                ),
+                pr_time_open_secs_total=Metric(
+                    value=0,
+                    labels={"user": user},
+                    description="Total time (in seconds) that PRs for a user are open",
+                    name="users_pr_time_open_secs_total",
+                    type="counter",
+                ),
+                pull_requests_total=Metric(
+                    value=0,
+                    labels={"user": user},
+                    description="All PRs closed by a user",
+                    name="users_pull_requests_total",
+                    type="counter",
+                ),
+                releases_total=Metric(
+                    value=0,
+                    labels={"user": user},
+                    description="All releases created by a user",
+                    name="users_releases_total",
+                    type="counter",
+                ),
+            )
         self.log.debug(f"Returned name: {self.user_login_cache['logins'][clean_login]}")
         return self.user_login_cache["logins"][clean_login]
 
-    def _cache_user_name(self, name):
+    def _cache_user_name(self, name: str) -> str:
         """
         Return user's actual login based on their Github name
         (this is so we can avoid having two keys for the same user)
@@ -208,7 +350,7 @@ class GithubAccess(object):
             f"User {name} doesn't exist in cache or in {self.special_logins}!"
         )
 
-    def _load_contributors(self):
+    def _load_contributors(self) -> None:
         """
         Configure all users that have commits into the repo
 
@@ -222,14 +364,20 @@ class GithubAccess(object):
         for contributor in self._github_query(url):
             # we rely on the caching function to add the user properly
             _ = self._cache_user_login(contributor["login"])
-        self.stats["users"]["unknown"] = deepcopy(user_schema)
-        self.stats["users"]["unknown"]["user"] = "unknown"
-        self.contributor_collection_time = time.time() - starttime
+        self.stats["users"]["unknown"] = User(
+            user="unknown", labels={"user": "unknown"}
+        )
+        self.stats["contributor_collection_time_secs"] = Metric(
+            name="contributor_collection_time_secs",
+            description="Time taken to collect all repo contributors",
+            value=time.time() - starttime,
+            type="gauge",
+        )
         self.log.info(
-            f"Loaded contributors in {self.contributor_collection_time} seconds"
+            f"Loaded contributors in {self.stats['contributor_collection_time_secs']['value']} seconds"
         )
 
-    def _set_collection_date(self, date, window):
+    def _set_collection_date(self, date: datetime, window: int) -> None:
         if not self.stats["collection_date"]:
             self.stats["collection_date"] = date
             self.log.debug(f"Collection timestamp: {date}")
@@ -237,7 +385,9 @@ class GithubAccess(object):
             self.stats["window"] = window * 4
             self.log.debug(f"Collection window: {window}")
 
-    def load_all_stats(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
+    def load_all_stats(
+        self, base_date=datetime.today(), window: Optional[int] = DEFAULT_WINDOW
+    ) -> None:
         """
         Wrapper to execute all stat collection functions
 
@@ -249,13 +399,27 @@ class GithubAccess(object):
         self.load_branches(base_date, window)
         self.load_repo_stats(base_date, window)
         mttr, windowed_mttr = self.repo.match_bugfixes(self.stats["bug_matches"])
-        self.stats["mttr_secs"] = mttr
-        self.stats["windowed_mttr_secs"] = windowed_mttr
+        self.stats["mttr_secs"] = Metric(
+            name="mttr_secs",
+            value=mttr,
+            description="Average seconds that a bug is open",
+            type="gauge",
+        )
+        self.stats["windowed_mttr_secs"] = Metric(
+            name="windowed_mttr_secs",
+            value=windowed_mttr,
+            description="Average seconds a bug is open in our collection window",
+            type="gauge",
+        )
         self.load_releases(base_date, window)
         self.load_workflow_runs(base_date, window)
         self.stats["total_collection_time_secs"] = time.time() - self.starttime
 
-    def load_pull_requests(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
+    def load_pull_requests(
+        self,
+        base_date: Optional[datetime] = datetime.today(),
+        window: Optional[int] = DEFAULT_WINDOW,
+    ) -> None:
         """
         Collect pull request data
 
@@ -277,16 +441,16 @@ class GithubAccess(object):
                 self.log.debug(f"{pull['title']} was created in the future. Skipping")
                 continue
             modified_time = datetime.strptime(pull["updated_at"], "%Y-%m-%dT%H:%M:%SZ")
-            self.stats["pull_requests_total"] += 1
+            self.stats["pull_requests_total"]["value"] += 1
             author = self._cache_user_login(pull["user"]["login"])
-            self.stats["users"][author]["pull_requests_total"] += 1
+            self.stats["users"][author]["pull_requests_total"]["value"] += 1
 
             if pull["state"] == "open":
-                self.stats["open_pull_requests_total"] += 1
-                self.stats["users"][author]["open_pull_requests_total"] += 1
+                self.stats["open_pull_requests_total"]["value"] += 1
+                self.stats["users"][author]["open_pull_requests_total"]["value"] += 1
             if pull["draft"]:
-                self.stats["draft_pull_requests_total"] += 1
-                self.stats["users"][author]["draft_pull_requests_total"] += 1
+                self.stats["draft_pull_requests_total"]["value"] += 1
+                self.stats["users"][author]["draft_pull_requests_total"]["value"] += 1
 
             # worth also catching pull requests created in our window
             if created < base_date and created > td:
@@ -848,7 +1012,7 @@ class GithubAccess(object):
                 else:
                     self.stats["workflows"][workflow]["runs"][status] = 1
             else:
-                self.stats["workflows"][workflow] = deepcopy(workflow_schema)
+                self.stats["workflows"][workflow] = Workflow()
                 self.stats["workflows"][workflow]["last_run"] = run["run_number"]
                 self.stats["workflows"][workflow]["runs"][status] = 1
             if run["run_attempt"] > 1:
