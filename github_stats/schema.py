@@ -54,55 +54,55 @@ class UserLoginCache(TypedDict):
     names: Dict[str, str]
 
 
-class Stats(TypedDict):
+class Stats(TypedDict, total=False):
     avg_commit_time_secs: Metric
-    branches_total: Metric
+    avg_pr_time_open_secs: Metric
     branches_collection_time_secs: Metric
+    branch_commits: dict
+    branches_total: Metric
     # track PRs with labels/patterns that match our definition of a bug
     bug_matches: list
+    closed_pull_requests_total: Metric
     code_frequency: dict
     collection_date: datetime
     commit_activity: dict
     commits_collection_time_secs: Metric
-    contributor_collection_time_secs: Metric
-    contributors: dict
-    empty_branches_total: Metric
-    branch_commits: dict
     commits_total: Metric
     commits_window_total: Metric
-    mttr_secs: Metric
-    main_branch_commits_total: Metric
-    window_main_branch_commits: Metric
-    avg_pr_time_open_secs: Metric
-    closed_pull_requests_total: Metric
+    contributor_collection_time_secs: Metric
+    contributors: dict
     draft_pull_requests_total: Metric
+    empty_branches_total: Metric
+    main_branch_commits_total: Metric
     merged_pull_requests_total: Metric
+    mttr_secs: Metric
     open_pull_requests_total: Metric
     pull_requests_total: Metric
     pr_collection_time_secs: Metric
     pr_labels: Dict[str, Metric]
     pr_time_open_secs_total: Metric
     protected_branches_total: Metric
+    # "punchcard": {
+    #    "commits_total": 0,
+    #    "sorted_days": list(),
+    #    "days": dict(),
+    # },
     release_collection_time_secs: Metric
     releases_total: Metric
     # count matching tags as we pass through PRs/etc.
     tag_matches: dict
     total_collection_time_secs: Metric
     unreleased_commits_total: Metric
-    users: Dict[str, User]
+    users: Optional[Dict[str, User]]
     window: int
     window_branches_total: Metric
+    window_main_branch_commits: Metric
     window_pull_requests: Metric
     window_releases: Metric
     windowed_mttr_secs: Metric
     workflow_collection_time_secs: Metric
     workflow_events: dict
     workflows: Dict[Workflow]
-    # "punchcard": {
-    #    "commits_total": 0,
-    #    "sorted_days": list(),
-    #    "days": dict(),
-    # },
     # "code_scanning": {
     #     "open": dict(),
     #     "closed": dict(),

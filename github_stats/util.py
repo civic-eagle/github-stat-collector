@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import regex
 
@@ -16,24 +17,31 @@ def load_patterns(tag_patterns=[], bug_patterns={}):
     return tag_matches, bug_matches, pr_matches
 
 
-def load_stats() -> Stats:
+def load_stats(date: datetime, window: int) -> Stats:
     return Stats(
-        pull_requests_total=Metric(
+        avg_commit_time_secs=Metric(
             value=0,
-            name="pull_requests_total",
-            description="All pull requests discovered in repo",
-            type="counter",
+            name="avg_commit_time_secs",
+            description="The overall average time between commit and release",
+            type="gauge",
         ),
-        open_pull_requests_total=Metric(
+        avg_pr_time_open_secs=Metric(
             value=0,
-            name="open_pull_requests_total",
-            description="All open pull requests discovered in repo",
-            type="counter",
+            name="avg_pr_time_open_secs",
+            description="The overall average time a PR is open",
+            type="gauge",
         ),
-        draft_pull_requests_total=Metric(
+        branches_collection_time_secs=Metric(
             value=0,
-            name="draft_pull_requests_total",
-            description="All draft pull requests discovered in repo",
+            name="branches_collection_time_secs",
+            description="Time taken collecting branch information",
+            type="gauge",
+        ),
+        # branch_commits
+        branches_total=Metric(
+            value=0,
+            name="branches_total",
+            description="Total number of branches in repo",
             type="counter",
         ),
         closed_pull_requests_total=Metric(
@@ -42,11 +50,133 @@ def load_stats() -> Stats:
             description="All closed pull requests discovered in repo",
             type="counter",
         ),
+        # code_frequency
+        collection_date=date,
+        # commit_activity
+        commits_collection_time_secs=Metric(
+            value=0,
+            name="commits_collection_time_secs",
+            description="Time taken collecting commit information",
+            type="gauge",
+        ),
+        commits_total=Metric(
+            value=0,
+            name="commits_total",
+            description="All commits made in the repo",
+            type="counter",
+        ),
+        commits_window=Metric(
+            value=0,
+            name="window_commits_total",
+            description="All commits made in the repo in our collection window",
+            type="gauge",
+        ),
+        contributor_collection_time_secs=Metric(
+            value=0,
+            name="contributor_collection_time_secs",
+            description="Time taken collecting contributor information",
+            type="gauge",
+        ),
+        # contributors
+        draft_pull_requests_total=Metric(
+            value=0,
+            name="draft_pull_requests_total",
+            description="All draft pull requests discovered in repo",
+            type="counter",
+        ),
+        empty_branches_total=Metric(
+            value=0,
+            name="empty_branches_total",
+            description="All branches with no data in them",
+            type="counter",
+        ),
+        main_branch_commits_total=Metric(
+            value=0,
+            name="main_branch-commits_total",
+            description="All commits to the main branch",
+            type="counter",
+        ),
         merged_pull_requests_total=Metric(
             value=0,
             name="merged_pull_requests_total",
             description="All merged pull requests discovered in repo",
             type="counter",
+        ),
+        mttr_secs=Metric(
+            value=0,
+            name="mttr_secs",
+            description="Avg time from bug testing to release",
+            type="gauge",
+        ),
+        open_pull_requests_total=Metric(
+            value=0,
+            name="open_pull_requests_total",
+            description="All open pull requests discovered in repo",
+            type="counter",
+        ),
+        pull_requests_total=Metric(
+            value=0,
+            name="pull_requests_total",
+            description="All pull requests discovered in repo",
+            type="counter",
+        ),
+        pr_collection_time_secs=Metric(
+            value=0,
+            name="pr_collection_time_secs",
+            description="Time taken collecting PR information",
+            type="gauge",
+        ),
+        # pr_labels
+        pr_time_open_secs_total=Metric(
+            value=0,
+            name="pr_time_open_secs_total",
+            description="Total time PRs are open",
+            type="counter",
+        ),
+        protected_branches_total=Metric(
+            value=0,
+            name="protected_branches_total",
+            description="Count of protected branches in repo",
+            type="gauge",
+        ),
+        release_collection_time_secs=Metric(
+            value=0,
+            name="release_collection_time_secs",
+            description="Time taken collecting release information",
+            type="gauge",
+        ),
+        releases_total=Metric(
+            value=0,
+            name="releases_total",
+            description="Count of releases made in repo",
+            type="counter",
+        ),
+        # tag_matches
+        total_collection_time_secs=Metric(
+            value=0,
+            name="total_collection_time_secs",
+            description="Time taken collecting all information for the repo",
+            type="gauge",
+        ),
+        unreleased_commits_total=Metric(
+            value=0,
+            name="unreleased_commits_total",
+            description="Count of commits that aren't associated with a release",
+            type="gauge",
+        ),
+        # users
+        window=window,
+        window_branches_total=Metric(
+            value=0,
+            name="window_branches_total",
+            description="All branches discovered in repo in our collection window",
+            type="gauge",
+        ),
+        window_main_branch_commits=Metric(
+            value=0,
+            name="window_main_branch_commits",
+            description="All branches discovered in repo in our collection window",
+            type="gauge",
         ),
         window_pull_requests=Metric(
             value=0,
@@ -54,6 +184,26 @@ def load_stats() -> Stats:
             description="All pull requests discovered in repo in our collection window",
             type="gauge",
         ),
+        window_releases=Metric(
+            value=0,
+            name="window_releases",
+            description="All releases discovered in repo in our collection window",
+            type="gauge",
+        ),
+        windowed_mttr_secs=Metric(
+            value=0,
+            name="windowed_mttr_secs",
+            description="Avg MTTR in our collection window",
+            type="gauge",
+        ),
+        workflow_collection_time_secs=Metric(
+            value=0,
+            name="workflow_collection_time_secs",
+            description="Time taken collecting Github Action Workflow data",
+            type="gauge",
+        ),
+        # workflow_events
+        # workflows
     )
 
 
