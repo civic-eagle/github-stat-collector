@@ -1,7 +1,22 @@
 """
 Defaults for some internal data
 """
+from typing import TypedDict
+
 DEFAULT_WINDOW = 1
+
+class Workflow(TypedDict):
+    retries: int
+    last_run: None
+    window_runs_total: int
+    runs: dict
+
+workflow_schema = {
+    "retries": 0,
+    "last_run": None,
+    "window_runs_total": 1,
+    "runs": dict(),
+}
 
 user_schema = {
     "avg_pr_time_open_secs": 0,
@@ -24,13 +39,6 @@ user_schema = {
     "window_releases": 0,
     "workflows": dict(),
     "workflow_totals": dict(),
-}
-
-workflow_schema = {
-    "retries": 0,
-    "last_run": None,
-    "window_runs_total": 1,
-    "runs": dict(),
 }
 
 user_login_cache = {
