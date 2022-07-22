@@ -21,13 +21,11 @@ import urllib.parse
 from github_stats.schema import (
     Metric,
     UserLoginCache,
-    User,
-    Stats,
     Workflow,
     DEFAULT_WINDOW,
 )
 from github_stats.gitops import Repo
-from github_stats.util import load_patterns
+from github_stats.util import load_patterns, load_user, load_stats
 
 calendar.setfirstweekday(calendar.SUNDAY)
 
@@ -94,44 +92,7 @@ class GithubAccess(object):
         """
         self.contributor_collection_time = 0
         self.user_login_cache = UserLoginCache(logins=dict(), names=dict())
-        self.stats = Stats(
-            pull_requests_total=Metric(
-                value=0,
-                name="pull_requests_total",
-                description="All pull requests discovered in repo",
-                type="counter",
-            ),
-            open_pull_requests_total=Metric(
-                value=0,
-                name="open_pull_requests_total",
-                description="All open pull requests discovered in repo",
-                type="counter",
-            ),
-            draft_pull_requests_total=Metric(
-                value=0,
-                name="draft_pull_requests_total",
-                description="All draft pull requests discovered in repo",
-                type="counter",
-            ),
-            closed_pull_requests_total=Metric(
-                value=0,
-                name="closed_pull_requests_total",
-                description="All closed pull requests discovered in repo",
-                type="counter",
-            ),
-            merged_pull_requests_total=Metric(
-                value=0,
-                name="merged_pull_requests_total",
-                description="All merged pull requests discovered in repo",
-                type="counter",
-            ),
-            window_pull_requests=Metric(
-                value=0,
-                name="window_pull_requests",
-                description="All pull requests discovered in repo in our collection window",
-                type="gauge",
-            ),
-        )
+        self.stats = load_stats()
         self.stats["pr_labels"] = {
             label.replace("_", "-"): {
                 "window_labelled_prs_total": Metric(
@@ -249,86 +210,7 @@ class GithubAccess(object):
         self.user_login_cache["logins"][clean_login] = name
         self.user_login_cache["names"][name] = clean_login
         if name not in self.stats["users"]:
-            self.stats["users"][name] = User(
-                user=name,
-                avg_pr_time_open_secs=Metric(
-                    value=0,
-                    labels={"user": user},
-                    description="Time a PR stays open for a specific user",
-                    name="users_avg_user_pr_time_open_secs",
-                    type="gauge",
-                ),
-                branches_total=Metric(
-                    value=0,
-                    labels={"user": user},
-                    description="all branches a owned by a user",
-                    name="users_branches_total",
-                    type="counter",
-                ),
-                closed_pull_requests_total=Metric(
-                    value=0,
-                    labels={"user": user},
-                    description="All PRs closed by a user",
-                    name="users_closed_pull_requests_total",
-                    type="counter",
-                ),
-                commits_total=Metric(
-                    value=0,
-                    labels={"user": user},
-                    description="Commits by a user",
-                    name="users_commits_total",
-                    type="counter",
-                ),
-                draft_pull_requests_total=Metric(
-                    value=0,
-                    labels={"user": user},
-                    description="All draft PRs by a user",
-                    name="users_draft_pull_requests_total",
-                    type="counter",
-                ),
-                last_commit_time_secs=Metric(
-                    value=0,
-                    labels={"user": user},
-                    description="Timestamp of last commit for a user",
-                    name="users_last_commit_time_secs",
-                    type="gauge",
-                ),
-                merged_pull_requests_total=Metric(
-                    value=0,
-                    labels={"user": user},
-                    description="All PRs merged by a user",
-                    name="users_merged_pull_requests_total",
-                    type="counter",
-                ),
-                open_pull_requests_total=Metric(
-                    value=0,
-                    labels={"user": user},
-                    description="All PRs closed by a user",
-                    name="users_open_pull_requests_total",
-                    type="counter",
-                ),
-                pr_time_open_secs_total=Metric(
-                    value=0,
-                    labels={"user": user},
-                    description="Total time (in seconds) that PRs for a user are open",
-                    name="users_pr_time_open_secs_total",
-                    type="counter",
-                ),
-                pull_requests_total=Metric(
-                    value=0,
-                    labels={"user": user},
-                    description="All PRs closed by a user",
-                    name="users_pull_requests_total",
-                    type="counter",
-                ),
-                releases_total=Metric(
-                    value=0,
-                    labels={"user": user},
-                    description="All releases created by a user",
-                    name="users_releases_total",
-                    type="counter",
-                ),
-            )
+            self.stats["users"][name] = load_user(name)
         self.log.debug(f"Returned name: {self.user_login_cache['logins'][clean_login]}")
         return self.user_login_cache["logins"][clean_login]
 
@@ -364,9 +246,7 @@ class GithubAccess(object):
         for contributor in self._github_query(url):
             # we rely on the caching function to add the user properly
             _ = self._cache_user_login(contributor["login"])
-        self.stats["users"]["unknown"] = User(
-            user="unknown", labels={"user": "unknown"}
-        )
+        self.stats["users"]["unknown"] = load_user("unknown")
         self.stats["contributor_collection_time_secs"] = Metric(
             name="contributor_collection_time_secs",
             description="Time taken to collect all repo contributors",
