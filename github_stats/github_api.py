@@ -334,11 +334,11 @@ class GithubAccess(object):
 
             # worth also catching pull requests created in our window
             if created < base_date and created > td:
-                self.stats["window_pull_requests"] += 1
-                self.stats["users"][author]["window_pull_requests"] += 1
+                self.stats["window_pull_requests"]["value"] += 1
+                self.stats["users"][author]["window_pull_requests"]["value"] += 1
             elif modified_time < base_date and modified_time > td:
-                self.stats["window_pull_requests"] += 1
-                self.stats["users"][author]["window_pull_requests"] += 1
+                self.stats["window_pull_requests"]["value"] += 1
+                self.stats["users"][author]["window_pull_requests"]["value"] += 1
 
             # Calculate avg PR time
             created = datetime.strptime(pull["created_at"], "%Y-%m-%dT%H:%M:%SZ")
@@ -347,19 +347,21 @@ class GithubAccess(object):
             merged_ts = None
             if not merged:
                 closed = pull.get("closed_at", None)
-                self.stats["closed_pull_requests_total"] += 1
-                self.stats["users"][author]["closed_pull_requests_total"] += 1
+                self.stats["closed_pull_requests_total"]["value"] += 1
+                self.stats["users"][author]["closed_pull_requests_total"]["value"] += 1
             else:
-                self.stats["merged_pull_requests_total"] += 1
-                self.stats["users"][author]["merged_pull_requests_total"] += 1
+                self.stats["merged_pull_requests_total"]["value"] += 1
+                self.stats["users"][author]["merged_pull_requests_total"]["value"] += 1
             if merged or closed:
                 if merged:
                     endtime = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ")
                 else:
                     endtime = datetime.strptime(closed, "%Y-%m-%dT%H:%M:%SZ")
                 timeopen = (endtime - created).total_seconds()
-                self.stats["pr_time_open_secs_total"] += timeopen
-                self.stats["users"][author]["pr_time_open_secs_total"] += timeopen
+                self.stats["pr_time_open_secs_total"]["value"] += timeopen
+                self.stats["users"][author]["pr_time_open_secs_total"][
+                    "value"
+                ] += timeopen
             if merged:
                 merged_ts = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ").timestamp()
 
@@ -370,21 +372,37 @@ class GithubAccess(object):
                     if name not in matches:
                         continue
                     self.log.debug(f"{title}: {name} ({matches=}) for {label}")
-                    self.stats["pr_labels"][labelname]["labelled_prs_total"] += 1
+                    self.stats["pr_labels"][labelname]["labelled_prs_total"][
+                        "value"
+                    ] += 1
                     if modified_time < base_date and modified_time > td:
-                        self.stats["pr_labels"][labelname][
-                            "window_labelled_prs_total"
+                        self.stats["pr_labels"][labelname]["window_labelled_prs_total"][
+                            "value"
                         ] += 1
                 if name not in self.label_matches.keys():
                     if name not in self.stats["pr_labels"]:
                         self.stats["pr_labels"][name] = {
-                            "labelled_prs_total": 1,
-                            "window_labelled_prs_total": 0,
+                            "window_labelled_prs_total": Metric(
+                                name="window_labelled_prs_total",
+                                value=1,
+                                description="Number of PRs with a particular label in our collection window",
+                                type="gauge",
+                            ),
+                            "labelled_prs_total": Metric(
+                                name="labelled_prs_total",
+                                value=0,
+                                description="Total number of PRs with a particular label",
+                                type="counter",
+                            ),
                         }
                     else:
-                        self.stats["pr_labels"][name]["labelled_prs_total"] += 1
+                        self.stats["pr_labels"][name]["labelled_prs_total"][
+                            "value"
+                        ] += 1
                     if modified_time < base_date and modified_time > td:
-                        self.stats["pr_labels"][name]["window_labelled_prs_total"] += 1
+                        self.stats["pr_labels"][name]["window_labelled_prs_total"][
+                            "value"
+                        ] += 1
                 if merged_ts and name in self.pr_bug_matches:
                     self.stats["bug_matches"].append((title, commit, merged_ts))
 
@@ -413,19 +431,20 @@ class GithubAccess(object):
         Generate average PR time after collecting all stats
         to get better numbers
         """
-        if self.stats["pull_requests_total"] > 0:
-            self.stats["avg_pr_time_open_secs"] = (
-                self.stats["pr_time_open_secs_total"]
-                / self.stats["pull_requests_total"]
+        if self.stats["pull_requests_total"]["value"] > 0:
+            self.stats["avg_pr_time_open_secs"]["value"] = (
+                self.stats["pr_time_open_secs_total"]["value"]
+                / self.stats["pull_requests_total"]["value"]
             )
         for user, data in self.stats["users"].items():
-            if data["pull_requests_total"] > 0:
-                self.stats["users"][user]["avg_pr_time_open_secs"] = (
-                    data["pr_time_open_secs_total"] / data["pull_requests_total"]
+            if data["pull_requests_total"]["value"] > 0:
+                self.stats["users"][user]["avg_pr_time_open_secs"]["value"] = (
+                    data["pr_time_open_secs_total"]["value"]
+                    / data["pull_requests_total"]["value"]
                 )
-        self.stats["pr_collection_time_secs"] = time.time() - starttime
+        self.stats["pr_collection_time_secs"]["value"] = time.time() - starttime
         self.log.info(
-            f"Loaded pull requests in {self.stats['pr_collection_time_secs']} seconds"
+            f"Loaded pull requests in {self.stats['pr_collection_time_secs']['value']} seconds"
         )
 
     def load_commits(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
@@ -460,27 +479,44 @@ class GithubAccess(object):
                     )
                 except Exception:
                     user = "unknown"
-                self.stats["users"][user]["commits_total"] += 1
-                if commit["time"] > self.stats["users"][user]["last_commit_time_secs"]:
-                    self.stats["users"][user]["last_commit_time_secs"] = commit["time"]
+                self.stats["users"][user]["commits_total"]["value"] += 1
+                if (
+                    commit["time"]
+                    > self.stats["users"][user]["last_commit_time_secs"]["value"]
+                ):
+                    self.stats["users"][user]["last_commit_time_secs"][
+                        "value"
+                    ] = commit["time"]
                 if td_ts < commit["time"] < base_ts:
-                    self.stats["commits_window_total"] += 1
-                    self.stats["users"][user]["window_commits_total"] += 1
+                    self.stats["commits_window_total"]["value"] += 1
+                    self.stats["users"][user]["window_commits_total"]["value"] += 1
                 if branch in self.stats["commits"]["branch_commits"]:
-                    self.stats["branch_commits"][branch]["commits_total"] += 1
+                    self.stats["branch_commits"][branch]["commits_total"]["value"] += 1
                     if td_ts < commit["time"] < base_ts:
                         self.log.debug(f"Window commit: {pprint.pformat(commit)}")
-                        self.stats["branch_commits"][branch][
-                            "commits_window_total"
+                        self.stats["branch_commits"][branch]["commits_window_total"][
+                            "value"
                         ] += 1
                 else:
                     self.stats["branch_commits"][branch] = {
-                        "commits_total": 1,
-                        "commits_window_total": 0,
+                        "commits_total": Metric(
+                            name="commits_total",
+                            value=1,
+                            labels={"branch": branch},
+                            description="Total commits to a specific branch",
+                            type="counter",
+                        ),
+                        "commits_window_total": Metric(
+                            name="commits_window_total",
+                            value=0,
+                            labels={"branch": branch},
+                            description="number of commits to a branch within our window",
+                            type="gauge",
+                        ),
                     }
                     if td_ts < commit["time"] < base_ts:
-                        self.stats["branch_commits"][branch][
-                            "commits_window_total"
+                        self.stats["branch_commits"][branch]["commits_window_total"][
+                            "value"
                         ] += 1
 
         (
@@ -489,13 +525,13 @@ class GithubAccess(object):
             unreleased_commits,
             total_commits,
         ) = self.repo.commit_release_matching(base_date, window)
-        self.stats["avg_commit_time_secs"] = avg_commit_time
-        self.stats["windowed_commit_time_secs"] = windowed_commit_time
-        self.stats["unreleased_commits_total"] = unreleased_commits
-        self.stats["commits_total"] = total_commits
-        self.stats["commits_collection_time_secs"] = time.time() - starttime
+        self.stats["avg_commit_time_secs"]["value"] = avg_commit_time
+        self.stats["windowed_commit_time_secs"]["value"] = windowed_commit_time
+        self.stats["unreleased_commits_total"]["value"] = unreleased_commits
+        self.stats["commits_total"]["value"] = total_commits
+        self.stats["commits_collection_time_secs"]["value"] = time.time() - starttime
         self.log.info(
-            f"Loaded commit history in {self.stats['commits_collection_time_secs']} seconds"
+            f"Loaded commit history in {self.stats['commits_collection_time_secs']['value']} seconds"
         )
 
     def load_branches(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
@@ -515,17 +551,16 @@ class GithubAccess(object):
         starttime = time.time()
         self.log.info("Loading branch details...")
         url = f"/repos/{self.repo_name}/branches"
-        self.stats["commits"]["collection_time"] = time.time() - starttime
         for branchdata in self.repo.list_branches():
             branch, last_commit = branchdata
             self.log.debug(f"Processing meta data for {branch}")
-            self.stats["branches_total"] += 1
+            self.stats["branches_total"]["value"] += 1
             if branch == self.main_branch:
-                self.stats["main_branch_commits_total"] += 1
+                self.stats["main_branch_commits_total"]["value"] += 1
                 if td_ts < int(last_commit) < base_ts:
-                    self.stats["window_main_branch_commits"] += 1
+                    self.stats["window_main_branch_commits"]["value"] += 1
             if td_ts < int(last_commit) < base_ts:
-                self.stats["window_branches"] += 1
+                self.stats["window_branches"]["value"] += 1
 
             """
             Branch author data is harder to suss out from git
@@ -557,17 +592,17 @@ class GithubAccess(object):
                     )
                     continue
                 if data["protected"]:
-                    self.stats["protected_branches"] += 1
+                    self.stats["protected_branches"]["value"] += 1
                 if data["commit"].get("author", None):
                     author = self._cache_user_login(data["commit"]["author"]["login"])
-                    self.stats["users"][author]["branches_total"] += 1
+                    self.stats["users"][author]["branches_total"]["value"] += 1
                     # 2020-12-30T03:19:29Z (RFC3339)
                     if dt_updated < base_date and dt_updated > td:
-                        self.stats["users"][author]["window_branches"] += 1
+                        self.stats["users"][author]["window_branches"]["value"] += 1
 
-        self.stats["collection_time_secs"] = time.time() - starttime
+        self.stats["branches_collection_time_secs"]["value"] = time.time() - starttime
         self.log.info(
-            f"Loaded branch details in {self.stats['branches_collection_time_secs']} seconds"
+            f"Loaded branch details in {self.stats['branches_collection_time_secs']['value']} seconds"
         )
 
     def load_repo_stats(self, base_date=datetime.today(), window=DEFAULT_WINDOW):

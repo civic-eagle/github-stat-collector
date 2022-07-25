@@ -1,8 +1,9 @@
 """
-Defaults for some internal data
+Hold typed objects for the data we collect
+(makes converting to different outputs easier)
 """
 from datetime import datetime
-from typing import TypedDict, Dict, Optional
+from typing import TypedDict, Dict, Optional, Tuple, List
 
 DEFAULT_WINDOW = 1
 
@@ -49,6 +50,11 @@ class LabelledPRs(TypedDict):
     window_labelled_prs_total: Metric
 
 
+class BranchCommits(TypedDict):
+    commits_total: Metric
+    commits_window_total: Metric
+
+
 class UserLoginCache(TypedDict):
     logins: Dict[str, str]
     names: Dict[str, str]
@@ -58,10 +64,10 @@ class Stats(TypedDict, total=False):
     avg_commit_time_secs: Metric
     avg_pr_time_open_secs: Metric
     branches_collection_time_secs: Metric
-    branch_commits: dict
+    branch_commits: Dict[str, BranchCommits]
     branches_total: Metric
     # track PRs with labels/patterns that match our definition of a bug
-    bug_matches: list
+    bug_matches: List[Tuple(str, str, int)]
     closed_pull_requests_total: Metric
     code_frequency: dict
     collection_date: datetime
@@ -79,7 +85,7 @@ class Stats(TypedDict, total=False):
     open_pull_requests_total: Metric
     pull_requests_total: Metric
     pr_collection_time_secs: Metric
-    pr_labels: Dict[str, Metric]
+    pr_labels: Dict[str, LabelledPRs]
     pr_time_open_secs_total: Metric
     protected_branches_total: Metric
     # "punchcard": {
@@ -90,7 +96,7 @@ class Stats(TypedDict, total=False):
     release_collection_time_secs: Metric
     releases_total: Metric
     # count matching tags as we pass through PRs/etc.
-    tag_matches: dict
+    tag_matches: Dict[str, Metric]
     total_collection_time_secs: Metric
     unreleased_commits_total: Metric
     users: Optional[Dict[str, User]]
@@ -102,7 +108,7 @@ class Stats(TypedDict, total=False):
     windowed_mttr_secs: Metric
     workflow_collection_time_secs: Metric
     workflow_events: dict
-    workflows: Dict[Workflow]
+    workflows: Dict[str, Workflow]
     # "code_scanning": {
     #     "open": dict(),
     #     "closed": dict(),
