@@ -55,6 +55,16 @@ class BranchCommits(TypedDict):
     commits_window_total: Metric
 
 
+class CodeFrequency(TypedDict):
+    additions: Metric
+    deletions: Metric
+
+
+class CommitActivity(TypedDict):
+    daily: Dict[str, Metric]
+    deletions: Metric
+
+
 class UserLoginCache(TypedDict):
     logins: Dict[str, str]
     names: Dict[str, str]
@@ -69,9 +79,9 @@ class Stats(TypedDict, total=False):
     # track PRs with labels/patterns that match our definition of a bug
     bug_matches: List[Tuple(str, str, int)]
     closed_pull_requests_total: Metric
-    code_frequency: dict
+    code_frequency: Dict[str, CodeFrequency]
     collection_date: datetime
-    commit_activity: dict
+    commit_activity: Dict[str, CommitActivity]
     commits_collection_time_secs: Metric
     commits_total: Metric
     commits_window_total: Metric

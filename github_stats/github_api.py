@@ -666,8 +666,20 @@ class GithubAccess(object):
                 f"Week {ts_date}, Additions: {additions}, Deletions: {deletions}"
             )
             self.stats["repo_stats"]["code_frequency"][str(ts_date)] = {
-                "additions": additions,
-                "deletions": deletions,
+                "additions": Metric(
+                    name="additions",
+                    value=additions,
+                    labels={"week": str(ts_date)},
+                    description="All additions made in a week",
+                    type="counter",
+                ),
+                "commits_window_total": Metric(
+                    name="commits_window_total",
+                    value=deletions,
+                    labels={"week": str(ts_date)},
+                    description="All deletions made in a week",
+                    type="gauge",
+                ),
             }
 
         """
@@ -705,13 +717,25 @@ class GithubAccess(object):
                 continue
             self.stats["repo_stats"]["commit_activity"][str(ts_date)] = {
                 "daily": dict(),
-                "commits_total": week["total"],
+                "commits_total": Metric(
+                    name="commits_window_total",
+                    value=week["total"],
+                    labels={"week": str(ts_date)},
+                    description="Weekly total commits",
+                    type="gauge",
+                ),
             }
             for date_offset in range(0, 7):
                 newdate = ts_date + timedelta(date_offset)
                 self.stats["repo_stats"]["commit_activity"][str(ts_date)]["daily"][
                     str(newdate)
-                ] = week["days"][date_offset]
+                ] = Metric(
+                    name="commits_window_total",
+                    value=week["days"][date_offset],
+                    labels={"week": str(ts_date), "day": date_offset},
+                    description="Daily commits from Github Repo Stats",
+                    type="gauge",
+                )
         """
         Contributors:
         """
