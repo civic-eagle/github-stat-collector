@@ -8,7 +8,8 @@ utillog = logging.getLogger("github-stats.util")
 
 
 def load_patterns(tag_patterns=[], bug_patterns={}):
-
+    """
+    """
     tag_matches = {tag["name"]: regex.compile(tag["pattern"]) for tag in tag_patterns}
 
     bug_matches = [regex.compile(p) for p in bug_patterns.get("patterns", [])]
@@ -18,6 +19,8 @@ def load_patterns(tag_patterns=[], bug_patterns={}):
 
 
 def load_stats(date: datetime, window: int) -> Stats:
+    """
+    """
     return Stats(
         avg_commit_time_secs=Metric(
             value=0,
@@ -50,7 +53,7 @@ def load_stats(date: datetime, window: int) -> Stats:
             description="All closed pull requests discovered in repo",
             type="counter",
         ),
-        # code_frequency
+        code_frequency=dict(),
         collection_date=date,
         # commit_activity
         commits_collection_time_secs=Metric(
@@ -208,6 +211,8 @@ def load_stats(date: datetime, window: int) -> Stats:
 
 
 def load_user(user: str) -> User:
+    """
+    """
     return User(
         user=user,
         avg_pr_time_open_secs=Metric(

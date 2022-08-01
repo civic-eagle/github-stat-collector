@@ -70,13 +70,27 @@ class UserLoginCache(TypedDict):
     names: Dict[str, str]
 
 
+class Contributor(TypedDict):
+    commits_total: Metric
+    weeks: Dict[str, WeeklyUserCommits]
+
+
+class WeeklyUserCommits(TypedDict):
+    commits: Metric
+    additions: Metric
+    deletions: Metric
+
+
 class Stats(TypedDict, total=False):
     avg_commit_time_secs: Metric
     avg_pr_time_open_secs: Metric
     branches_collection_time_secs: Metric
     branch_commits: Dict[str, BranchCommits]
     branches_total: Metric
-    # track PRs with labels/patterns that match our definition of a bug
+    """
+    track PRs with labels/patterns that match our definition of a bug
+    (title, commit sha, timestamp)
+    """
     bug_matches: List[Tuple(str, str, int)]
     closed_pull_requests_total: Metric
     code_frequency: Dict[str, CodeFrequency]
@@ -86,7 +100,7 @@ class Stats(TypedDict, total=False):
     commits_total: Metric
     commits_window_total: Metric
     contributor_collection_time_secs: Metric
-    contributors: dict
+    contributors: Dict[str, Contributor]
     draft_pull_requests_total: Metric
     empty_branches_total: Metric
     main_branch_commits_total: Metric
