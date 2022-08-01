@@ -1,25 +1,41 @@
 from datetime import datetime
 import logging
 import regex
+from typing import Optional, Tuple
 
 from github_stats.schema import User, Stats, Metric
 
 utillog = logging.getLogger("github-stats.util")
 
 
-def load_patterns(tag_patterns=[], bug_patterns={}):
+def load_patterns(
+    tag_patterns: Optional[list] = None, bug_patterns: Optional[dict] = None
+) -> Tuple[dict, list, list]:
     """
+    Load all tag patterns and bug patterns into actual regex objects
+    once so we get the benefit of pre-compiled regexes
     """
-    tag_matches = {tag["name"]: regex.compile(tag["pattern"]) for tag in tag_patterns}
+    if tag_patterns:
+        tag_matches = {
+            tag["name"]: regex.compile(tag["pattern"]) for tag in tag_patterns
+        }
+    else:
+        tag_matches = {}
 
-    bug_matches = [regex.compile(p) for p in bug_patterns.get("patterns", [])]
-    pr_matches = [label for label in bug_patterns.get("labels", [])]
+    if bug_patterns:
+        bug_matches = [regex.compile(p) for p in bug_patterns.get("patterns", [])]
+        pr_matches = [label for label in bug_patterns.get("labels", [])]
+    else:
+        bug_matches = []
+        pr_matches = []
     utillog.debug(f"{tag_matches=}, {bug_matches=}, {pr_matches=}")
     return tag_matches, bug_matches, pr_matches
 
 
 def load_stats(date: datetime, window: int) -> Stats:
     """
+    Define loading of stats object in one place
+    (largely to keep the actual api file clean)
     """
     return Stats(
         avg_commit_time_secs=Metric(
@@ -212,6 +228,8 @@ def load_stats(date: datetime, window: int) -> Stats:
 
 def load_user(user: str) -> User:
     """
+    Define loading of user object in one place
+    (largely to keep the actual api file clean)
     """
     return User(
         user=user,

@@ -70,15 +70,15 @@ class UserLoginCache(TypedDict):
     names: Dict[str, str]
 
 
-class Contributor(TypedDict):
-    commits_total: Metric
-    weeks: Dict[str, WeeklyUserCommits]
-
-
 class WeeklyUserCommits(TypedDict):
     commits: Metric
     additions: Metric
     deletions: Metric
+
+
+class Contributor(TypedDict):
+    commits_total: Metric
+    weeks: Dict[str, WeeklyUserCommits]
 
 
 class Stats(TypedDict, total=False):
