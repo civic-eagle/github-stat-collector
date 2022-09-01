@@ -9,8 +9,8 @@ python = "^3.9"
 regex = "^2022.8.17"
 requests = "^2.28.0"
 PyYAML = "^6.0"
+pygit2 = "^1.10.1"
 influxdb-client = {extras = ["ciso"], version = "^1.32.0"}
-pygit2 = "^1.10.0"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^5.0.4"
