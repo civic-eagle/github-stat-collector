@@ -1,15 +1,19 @@
-FROM python:alpine
+FROM python:slim
 
-RUN apk add --no-cache libffi libffi-dev musl-dev g++ libgit2-dev \
+RUN apt-get update -qq \
+  && apt-get install -yqq --no-install-recommends build-essential libgit2-dev \
   && pip3 install --disable-pip-version-check --no-cache-dir poetry crcmod
 
 WORKDIR /app
 COPY pyproject.toml .
 COPY poetry.lock .
-RUN poetry install --no-dev \
+RUN poetry install --only main \
   && rm -r /root/.cache/pypoetry/cache /root/.cache/pypoetry/artifacts/
 
-RUN apk del g++ musl-dev libffi-dev
+RUN apt-get remove -yqq build-essential \
+  && apt-get autoremove -yqq \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
 
 COPY github_stats/ github_stats/
 COPY *.py /app/
