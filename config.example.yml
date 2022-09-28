@@ -1,35 +1,37 @@
-repo:
-  org: organization
-  name: organization/repo
-  branches:
-    main: develop
-    release: release
-  tag_patterns:
-    - name: release
-      # use more generous globs here to address patterns like
-      # refs/tags/v0.1
-      pattern: ".*v.*"
-  bug_matching:
-    labels:
-      - bug
-    patterns:
-      - ^HOTFIX.*
-      - ^BUG.*
-      - ^Bugfix.*
-      - ^Fix.*
-  additional_labels:
-    # create new PR labels by combining other existing labels
-    tech-debt:
-      - dependencies
-      - duplicate
-  special_logins:
-    "User 1": user1
-  broken_users:
-    - user2@test.com
-  # filter out users from tracking if they only have old commits
-  user_time_filter: False
-  clone_url: https://github.com/organization/repo
-  folder: repos
+repo_folder: repos
+metric_prefix: ""
+
+repos:
+  - org: organization
+    name: organization/repo
+    branches:
+      main: develop
+      release: release
+    tag_patterns:
+      - name: release
+        # use more generous globs here to address patterns like
+        # refs/tags/v0.1
+        pattern: ".*v.*"
+    bug_matching:
+      labels:
+        - bug
+      patterns:
+        - ^HOTFIX.*
+        - ^BUG.*
+        - ^Bugfix.*
+        - ^Fix.*
+    additional_labels:
+      # create new PR labels by combining other existing labels
+      tech-debt:
+        - dependencies
+        - duplicate
+    special_logins:
+      "User 1": user1
+    broken_users:
+      - user2@test.com
+    # filter out users from tracking if they only have old commits
+    user_time_filter: False
+    clone_url: https://github.com/organization/repo
 
 google:
   project_id: google-project

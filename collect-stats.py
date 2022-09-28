@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+import copy
 from datetime import datetime
 import logging
 import os
 import time
-import yaml
 
 # local imports
 from github_stats.github_api import GithubAccess
 from github_stats.outputs.influx import InfluxOutput
+from github_stats.util import load_config
 
 SCRIPTDIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -54,18 +55,22 @@ def main():
     logger.addHandler(logging.StreamHandler())
     if args.debug:
         logger.setLevel(logging.DEBUG)
-    config = yaml.safe_load(open(args.config, "r", encoding="utf-8").read())
-    timestamp = datetime.utcfromtimestamp(args.timestamp)
-    starttime = time.time()
-    gh = GithubAccess(config)
-    influx = InfluxOutput(config, timestamp)
-    gh.load_all_stats(timestamp, args.window)
-    influx.format_stats(gh.stats)
-    influx.write_stats()
+    config = load_config(args.config)
+    for repo in config["repos"]:
+        local_config = copy.deepcopy(config)
+        local_config.pop("repos", None)
+        local_config["repo"] = repo
+        timestamp = datetime.utcfromtimestamp(args.timestamp)
+        starttime = time.time()
+        gh = GithubAccess(local_config)
+        influx = InfluxOutput(local_config, timestamp)
+        gh.load_all_stats(timestamp, args.window)
+        influx.format_stats(gh.stats)
+        influx.write_stats()
 
-    logger.info(
-        f"Loaded, formatted, and sent {influx.output_stat_count} stats in {time.time() - starttime} seconds"
-    )
+        logger.info(
+            f"Loaded, formatted, and sent {influx.output_stat_count} stats in {time.time() - starttime} seconds"
+        )
 
 
 if __name__ == "__main__":
