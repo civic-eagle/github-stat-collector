@@ -14,12 +14,11 @@ class Repo(object):
         auth_token = os.environ.get("GITHUB_TOKEN", None)
         if not auth_token:
             auth_token = config["repo"].get("github_token", None)
-        if not auth_token:
-            raise Exception("Cannot find Github auth token in environment or config")
-
-        self.callbacks = pygit2.RemoteCallbacks(
-            pygit2.UserPass("x-access-token", auth_token)
-        )
+        self.callbacks = None
+        if auth_token:
+            self.callbacks = pygit2.RemoteCallbacks(
+                pygit2.UserPass("x-access-token", auth_token)
+            )
         self.repo_url = config["repo"]["clone_url"]
         self.repo_path = f"{config['repo']['folder']}/{config['repo']['name']}"
         self.primary_branches = config["repo"]["branches"]
