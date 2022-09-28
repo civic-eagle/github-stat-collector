@@ -1,5 +1,4 @@
 repo_folder: repos
-metric_prefix: ""
 
 repos:
   - org: organization
