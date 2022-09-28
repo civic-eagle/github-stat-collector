@@ -19,7 +19,10 @@ class Repo(object):
             self.callbacks = pygit2.RemoteCallbacks(
                 pygit2.UserPass("x-access-token", auth_token)
             )
-        self.repo_url = config["repo"]["clone_url"]
+        if "clone_url" in config["repo"]:
+            self.repo_url = config["repo"]["clone_url"]
+        else:
+            self.repo_url = f"https://github.com/{config['org']}/{config['name']}"
         self.repo_path = f"{config['repo']['folder']}/{config['repo']['name']}"
         self.primary_branches = config["repo"]["branches"]
         self.tag_matches, self.bug_matches, _ = load_patterns(
