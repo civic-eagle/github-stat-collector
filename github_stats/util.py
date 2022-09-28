@@ -22,6 +22,6 @@ def load_config(config_file):
     consistently load and format config file into config dictionary
     """
     config = yaml.safe_load(open(config_file, "r", encoding="utf-8").read())
-    for k in config["repos"].keys():
-        config[k]["folder"] = config["repo_folder"]
+    for k, _ in enumerate(config["repos"]):
+        config["repos"][k]["folder"] = config["repo_folder"]
     return config
