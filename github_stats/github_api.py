@@ -204,9 +204,10 @@ class GithubAccess(object):
             return self.user_login_cache["logins"][name]
         if name in self.special_logins:
             return self.user_login_cache["logins"][self.special_logins[name]]
-        raise Exception(
-            f"User {name} doesn't exist in cache or in {self.special_logins}!"
-        )
+        if name not in self.broken_users:
+            raise Exception(
+                f"User {name} doesn't exist in cache or in {self.special_logins}!"
+            )
 
     def _load_contributors(self):
         """
