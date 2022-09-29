@@ -2,6 +2,8 @@ repo_folder: repos
 
 repos:
   - org: organization
+    tagged_releases: false
+    branch_releases: false
     name: organization/repo
     branches:
       main: develop

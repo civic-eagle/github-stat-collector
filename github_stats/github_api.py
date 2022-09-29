@@ -31,6 +31,7 @@ class GithubAccess(object):
     BASE_URL = "https://api.github.com/"
 
     def __init__(self, config):
+        self.log = logging.getLogger("github-stats.collection")
         auth_token = os.environ.get("GITHUB_TOKEN", None)
         if not auth_token:
             auth_token = config["repo"].get("github_token", None)
@@ -54,9 +55,12 @@ class GithubAccess(object):
         self._request.headers.update(headers)
         self.repo = Repo(config)
 
+        self.tagged_releases = config["repo"].get("tagged_releases", False)
+        self.branch_releases = config["repo"].get("branch_releases", False)
+        if self.tagged_releases and self.branch_releases:
+            raise Exception("Can't have tagged releases and branch releases!")
         self.org = config["repo"]["org"]
         self.repo_name = f"{self.org}/{config['repo']['name']}"
-        self.log = logging.getLogger("github-stats.collection")
         self.ignored_workflows = config["repo"].get("ignored_workflows", list())
         self.ignored_statuses = config["repo"].get("ignored_statuses", ["queued"])
         self.main_branch = config["repo"]["branches"].get("main", "main")
@@ -246,7 +250,29 @@ class GithubAccess(object):
         mttr, windowed_mttr = self.repo.match_bugfixes(self.stats["bug_matches"])
         self.stats["mttr"] = mttr
         self.stats["windowed_mttr"] = windowed_mttr
-        self.load_releases(base_date, window)
+        if self.tagged_releases:
+            self.log.debug(f"Tracking releases with tags: {self.tag_matches}")
+            rt = self.repo.tag_releases(base_date, window)
+            self.stats["releases"]["total_releases"] = rt["total_releases"]
+            self.stats["releases"]["total_window_releases"] = rt[
+                "total_window_releases"
+            ]
+            for user, rd in rt["users"].items():
+                author = self._cache_user_name(user.split(" <")[0])
+                if not author:
+                    self.log.warning(
+                        f"{user} doesn't have a reasonable commit author name. Skipping"
+                    )
+                    continue
+                self.stats["users"][author]["total_releases"] = rd["total_releases"]
+                self.stats["users"][author]["total_window_releases"] = rd[
+                    "total_window_releases"
+                ]
+        elif not self.branch_releases:
+            self.log.debug("Using Github releases to track releases")
+            self.load_releases(base_date, window)
+        else:
+            self.log.debug(f"Tracking releases as commits to {self.release_branch}")
         self.load_workflow_runs(base_date, window)
         self.stats["collection_time_secs"] = time.time() - self.starttime
 
@@ -412,12 +438,18 @@ class GithubAccess(object):
                     user = self._cache_user_name(commit["author"].split(" <")[0])
                 except Exception:
                     user = "unknown"
+                if branch == self.release_branch and self.branch_releases:
+                    self.stats["releases"]["total_releases"] += 1
+                    self.stats["users"][user]["total_releases"] += 1
                 self.stats["users"][user]["total_commits"] += 1
                 if commit["time"] > self.stats["users"][user]["last_commit_time"]:
                     self.stats["users"][user]["last_commit_time"] = commit["time"]
                 if td_ts < commit["time"] < base_ts:
                     self.stats["commits"]["window_commits"] += 1
                     self.stats["users"][user]["total_window_commits"] += 1
+                    if branch == self.release_branch and self.branch_releases:
+                        self.stats["releases"]["total_window_releases"] += 1
+                        self.stats["users"][user]["total_window_releases"] += 1
                 if branch in self.stats["commits"]["branch_commits"]:
                     self.stats["commits"]["branch_commits"][branch][
                         "total_commits"

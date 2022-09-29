@@ -62,17 +62,28 @@ class Repo(object):
         This let's us do an OID comparison between each commit
         and the tag references
         """
-        self.releases = [
-            (
-                str(self.repoobj[self.repoobj.references[r].target].hex),
-                int(self.repoobj[self.repoobj.references[r].target].commit_time),
+        self.log.debug(f"{self.tag_matches=}")
+        self.releases = []
+        for r in self.repoobj.references:
+            self.log.debug(
+                f"Checking reference {r}, {self.repoobj.references[r].type} for tag matching"
             )
-            for r in self.repoobj.references
             # use this to short-circuit larger reference lists
-            if "tag" in r
-            and self.repoobj.references[r].type == pygit2.GIT_REF_OID
-            and any(v.match(r) for v in self.tag_matches.values())
-        ]
+            if (
+                "tag" in r
+                and self.repoobj.references[r].type == pygit2.GIT_REF_OID
+                and any(v.match(r) for v in self.tag_matches.values())
+            ):
+                target = self.repoobj[self.repoobj.references[r].target]
+                if target.type == pygit2.GIT_OBJ_TAG:
+                    target = self.repoobj[target.target]
+                self.releases.append(
+                    (
+                        str(target.hex),
+                        int(target.commit_time),
+                        str(target.author),
+                    )
+                )
         # sort by commit timestamp
         self.releases.sort(key=lambda x: x[1])
 
@@ -128,6 +139,34 @@ class Repo(object):
             yield (branch_name, commit.commit_time)
         self.log.debug(f"Found {branch_count} branches in the repo")
 
+    def tag_releases(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
+        """
+        :returns: total count of releases, windowed releases
+        """
+        tagged_releases = {
+            "total_releases": 0,
+            "users": dict(),
+            "total_window_releases": 0,
+        }
+        window_end_ts = base_date.timestamp()
+        window_start_ts = (base_date - timedelta(window)).timestamp()
+        for release in self.releases:
+            user = release[2]
+            tagged_releases["total_releases"] += 1
+            if user in tagged_releases["users"]:
+                tagged_releases["users"][user]["total_releases"] += 1
+            else:
+                tagged_releases["users"][user] = {
+                    "total_window_releases": 0,
+                    "total_releases": 1,
+                }
+            # because we check for the user above this if statement, we don't have to check again inside it
+            if window_start_ts < release[1] < window_end_ts:
+                tagged_releases["windowed_releases"] += 1
+                tagged_releases["users"][user]["total_window_releases"] += 1
+        self.log.debug(f"{tagged_releases=}")
+        return tagged_releases
+
     def match_bugfixes(
         self, pr_list, base_date=datetime.today(), window=DEFAULT_WINDOW
     ):
@@ -140,7 +179,7 @@ class Repo(object):
         :returns: rough mttr, rough windowed mttr
         :rtype: float
         """
-        if not self.releases:
+        if not self.releases or not pr_list:
             return 0, 0
         window_end_ts = base_date.timestamp()
         window_start_ts = (base_date - timedelta(window)).timestamp()
