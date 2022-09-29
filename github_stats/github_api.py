@@ -204,10 +204,9 @@ class GithubAccess(object):
             return self.user_login_cache["logins"][name]
         if name in self.special_logins:
             return self.user_login_cache["logins"][self.special_logins[name]]
-        if name not in self.broken_users:
-            raise Exception(
-                f"User {name} doesn't exist in cache or in {self.special_logins}!"
-            )
+        raise Exception(
+            f"User {name} doesn't exist in cache or in {self.special_logins}!"
+        )
 
     def _load_contributors(self):
         """
@@ -223,6 +222,7 @@ class GithubAccess(object):
         for contributor in self._github_query(url):
             # we rely on the caching function to add the user properly
             _ = self._cache_user_login(contributor["login"])
+        _ = self._cache_user_login("unknown")
         self.stats["users"]["unknown"] = deepcopy(user_schema)
         self.contributor_collection_time = time.time() - starttime
         self.log.info(
@@ -438,6 +438,8 @@ class GithubAccess(object):
                 try:
                     user = self._cache_user_name(commit["author"].split(" <")[0])
                 except Exception:
+                    user = "unknown"
+                if not user:
                     user = "unknown"
                 if branch == self.release_branch and self.branch_releases:
                     self.stats["releases"]["total_releases"] += 1

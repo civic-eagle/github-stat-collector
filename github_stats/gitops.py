@@ -162,7 +162,7 @@ class Repo(object):
                 }
             # because we check for the user above this if statement, we don't have to check again inside it
             if window_start_ts < release[1] < window_end_ts:
-                tagged_releases["windowed_releases"] += 1
+                tagged_releases["total_window_releases"] += 1
                 tagged_releases["users"][user]["total_window_releases"] += 1
         self.log.debug(f"{tagged_releases=}")
         return tagged_releases
