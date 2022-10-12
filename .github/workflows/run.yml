@@ -22,7 +22,7 @@ jobs:
           gcr.io/civic-eagle-enview-dev/github-stat-collector:latest
       - name: get stats
         run: |
-          docker run --rm \
+          docker run --net=host --rm \
           -v /opt/github-stat-collector/config.yml:/app/config.yml \
           -v /opt/github-stat-collector/repos:/app/repos \
           gcr.io/civic-eagle-enview-dev/github-stat-collector:latest \
