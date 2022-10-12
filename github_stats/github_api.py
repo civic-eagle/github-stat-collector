@@ -7,6 +7,7 @@ A general note:
     Of course, this pattern isn't perfect, and can be a bit confusing to read at times.
 """
 import calendar
+from copy import deepcopy
 from datetime import datetime, timedelta
 import logging
 import os
@@ -34,16 +35,16 @@ class GithubAccess(object):
     BASE_URL = "https://api.github.com/"
 
     def __init__(self, config):
+        self.log = logging.getLogger("github-stats.collection")
         auth_token = os.environ.get("GITHUB_TOKEN", None)
         if not auth_token:
             auth_token = config["repo"].get("github_token", None)
-        if not auth_token:
-            raise Exception("Cannot find Github auth token in environment or config")
-
         headers = {
             "Accept": "application/vnd.github.v3+json",
-            "Authorization": f"token {auth_token}",
         }
+        if auth_token:
+            headers["Authorization"] = f"token {auth_token}"
+
         retry = Retry(
             total=3,
             read=3,
@@ -59,9 +60,12 @@ class GithubAccess(object):
         self._request.headers.update(headers)
         self.repo = Repo(config)
 
+        self.tagged_releases = config["repo"].get("tagged_releases", False)
+        self.branch_releases = config["repo"].get("branch_releases", False)
+        if self.tagged_releases and self.branch_releases:
+            raise Exception("Can't have tagged releases and branch releases!")
         self.org = config["repo"]["org"]
         self.repo_name = f"{self.org}/{config['repo']['name']}"
-        self.log = logging.getLogger("github-stats.collection")
         self.ignored_workflows = config["repo"].get("ignored_workflows", list())
         self.ignored_statuses = config["repo"].get("ignored_statuses", ["queued"])
         self.main_branch = config["repo"]["branches"].get("main", "main")
@@ -246,13 +250,9 @@ class GithubAccess(object):
         for contributor in self._github_query(url):
             # we rely on the caching function to add the user properly
             _ = self._cache_user_login(contributor["login"])
-        self.stats["users"]["unknown"] = load_user("unknown")
-        self.stats["contributor_collection_time_secs"] = Metric(
-            name="contributor_collection_time_secs",
-            description="Time taken to collect all repo contributors",
-            value=time.time() - starttime,
-            type="gauge",
-        )
+        _ = self._cache_user_login("unknown")
+        self.stats["users"]["unknown"] = deepcopy(user_schema)
+        self.contributor_collection_time = time.time() - starttime
         self.log.info(
             f"Loaded contributors in {self.stats['contributor_collection_time_secs']['value']} seconds"
         )
@@ -291,7 +291,29 @@ class GithubAccess(object):
             description="Average seconds a bug is open in our collection window",
             type="gauge",
         )
-        self.load_releases(base_date, window)
+        if self.tagged_releases:
+            self.log.debug(f"Tracking releases with tags: {self.tag_matches}")
+            rt = self.repo.tag_releases(base_date, window)
+            self.stats["releases"]["total_releases"] = rt["total_releases"]
+            self.stats["releases"]["total_window_releases"] = rt[
+                "total_window_releases"
+            ]
+            for user, rd in rt["users"].items():
+                author = self._cache_user_name(user.split(" <")[0])
+                if not author:
+                    self.log.warning(
+                        f"{user} doesn't have a reasonable commit author name. Skipping"
+                    )
+                    continue
+                self.stats["users"][author]["total_releases"] = rd["total_releases"]
+                self.stats["users"][author]["total_window_releases"] = rd[
+                    "total_window_releases"
+                ]
+        elif not self.branch_releases:
+            self.log.debug("Using Github releases to track releases")
+            self.load_releases(base_date, window)
+        else:
+            self.log.debug(f"Tracking releases as commits to {self.release_branch}")
         self.load_workflow_runs(base_date, window)
         self.stats["total_collection_time_secs"] = time.time() - self.starttime
 
@@ -479,17 +501,20 @@ class GithubAccess(object):
                     )
                 except Exception:
                     user = "unknown"
-                self.stats["users"][user]["commits_total"]["value"] += 1
-                if (
-                    commit["time"]
-                    > self.stats["users"][user]["last_commit_time_secs"]["value"]
-                ):
-                    self.stats["users"][user]["last_commit_time_secs"][
-                        "value"
-                    ] = commit["time"]
+                if not user:
+                    user = "unknown"
+                if branch == self.release_branch and self.branch_releases:
+                    self.stats["releases"]["total_releases"] += 1
+                    self.stats["users"][user]["total_releases"] += 1
+                self.stats["users"][user]["total_commits"] += 1
+                if commit["time"] > self.stats["users"][user]["last_commit_time"]:
+                    self.stats["users"][user]["last_commit_time"] = commit["time"]
                 if td_ts < commit["time"] < base_ts:
-                    self.stats["commits_window_total"]["value"] += 1
-                    self.stats["users"][user]["window_commits_total"]["value"] += 1
+                    self.stats["commits"]["window_commits"] += 1
+                    self.stats["users"][user]["total_window_commits"] += 1
+                    if branch == self.release_branch and self.branch_releases:
+                        self.stats["releases"]["total_window_releases"] += 1
+                        self.stats["users"][user]["total_window_releases"] += 1
                 if branch in self.stats["commits"]["branch_commits"]:
                     self.stats["branch_commits"][branch]["commits_total"]["value"] += 1
                     if td_ts < commit["time"] < base_ts:

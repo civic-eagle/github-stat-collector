@@ -9,6 +9,12 @@ This tool relies on `poetry` for dependency management. If you already have `poe
 
 Leveraging the Google output requires `poetry add opencensus opencensus-ext-stackdriver`. We normally keep these dependencies out of the program to significantly reduce install size and build time. You _will_ have problems with this output as Stackdriver doesn't allow negative numbers in custom metrics.
 
+# Configuration
+
+[Example configuration](config.exmaple.yml)
+
+Configuration largely defines the repos (and any custom work to do in the repo) and the output location.
+
 # Backfilling Data
 
 We can leverage the `backfill-stats.py` script to loop over longer time ranges and fill in data:

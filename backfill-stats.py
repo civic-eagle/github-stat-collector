@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+import copy
 from datetime import datetime
 import logging
 import os
 import time
-import yaml
 
 # local imports
 from github_stats.github_api import GithubAccess
 from github_stats.outputs.influx import InfluxOutput
+from github_stats.util import load_config
 
 SCRIPTDIR = os.path.dirname(os.path.realpath(__file__))
 logger = logging.getLogger("github-stats")
@@ -134,27 +135,33 @@ def main():
     logger.debug(f"{positions=}")
 
     # actually set up environment
-    config = yaml.safe_load(open(args.config, "r", encoding="utf-8").read())
+    config = load_config(args.config)
 
-    for run in range(
-        int(args.start_timestamp), int(args.stop_timestamp), int(args.timestamp_step)
-    ):
-        timestamp = datetime.utcfromtimestamp(run)
-        logger.info(f"Processing data for {timestamp}...")
-        # we should load GithubAccess every run to ensure we don't lose access tokens/etc.
-        gh = GithubAccess(config)
-        influx = InfluxOutput(config, timestamp.timestamp())
-        # retry stat collection a few times in case we get a failure
-        for _ in range(3):
-            try:
-                gh.load_all_stats(timestamp, args.window)
-                break
-            except Exception:
-                pass
-        influx.format_stats(gh.stats)
-        influx.write_stats()
-        # sleep for however long it takes to get to our next position
-        _wait(positions)
+    for repo in config["repos"]:
+        local_config = copy.deepcopy(config)
+        local_config.pop("repos", None)
+        local_config["repo"] = repo
+        for run in range(
+            int(args.start_timestamp),
+            int(args.stop_timestamp),
+            int(args.timestamp_step),
+        ):
+            timestamp = datetime.utcfromtimestamp(run)
+            logger.info(f"Processing data for {timestamp}...")
+            # we should load GithubAccess every run to ensure we don't lose access tokens/etc.
+            gh = GithubAccess(local_config)
+            influx = InfluxOutput(local_config, timestamp)
+            # retry stat collection a few times in case we get a failure
+            for _ in range(3):
+                try:
+                    gh.load_all_stats(timestamp, args.window)
+                    break
+                except Exception:
+                    pass
+            influx.format_stats(gh.stats)
+            influx.write_stats()
+            # sleep for however long it takes to get to our next position
+            _wait(positions)
 
 
 if __name__ == "__main__":
