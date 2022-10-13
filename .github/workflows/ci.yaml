@@ -45,7 +45,7 @@ jobs:
           done < <(find . -type f -name "*.sh" ! -path "*/.git/*" -print0)
       - name: Get current tag
         id: get_tag
-        run: echo ::set-output name=TAG::$(echo $GITHUB_REF | cut -d / -f 3)
+        run: echo "TAG=$(echo $GITHUB_REF | cut -d / -f 3)" >> $GITHUB_OUTPUT
     outputs:
       tag: ${{ steps.get_tag.outputs.TAG }}
 
