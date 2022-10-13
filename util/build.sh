@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+if [[ -n "${DEPLOY_KEY_FILE}" ]]; then
+    echo "${DEPLOY_KEY_FILE}" > /tmp/credentials.json
+    gcloud auth activate-service-account --key-file /tmp/credentials.json
+    gcloud auth configure-docker
+fi
+
 ROOT="gcr.io"
 PROJECT="civic-eagle-enview-dev"
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )

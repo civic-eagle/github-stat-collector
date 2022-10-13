@@ -10,16 +10,6 @@ jobs:
     name: Stat Collection
     runs-on: self-hosted
     steps:
-      - name: login to GCP repo
-        uses: docker/login-action@v1
-        with:
-          registry: gcr.io
-          username: _json_key
-          password: ${{ secrets.DEPLOY_KEY_FILE }}
-      - name: pull container
-        run: |
-          docker pull \
-          gcr.io/civic-eagle-enview-dev/github-stat-collector:latest
       - name: get stats
         run: |
           docker run --net=host --rm \
