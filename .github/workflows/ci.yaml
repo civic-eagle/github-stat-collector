@@ -61,11 +61,7 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v3
-      - name: login to GCP repo
-        uses: docker/login-action@v1
-        with:
-          registry: gcr.io
-          username: _json_key
-          password: ${{ secrets.DEPLOY_KEY_FILE }}
       - name: Build/Deploy
+        env:
+          DEPLOY_KEY_FILE: ${{ secrets.DEPLOY_KEY_FILE }}
         run: TAG=${{ steps.get_tag.outputs.TAG }} bash util/build.sh
