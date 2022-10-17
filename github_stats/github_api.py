@@ -16,13 +16,17 @@ import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 import time
+from typing import Optional
 import urllib.parse
 
-from github_stats.schema import user_schema, DEFAULT_WINDOW
-from github_stats.schema import user_login_cache as user_login_cache_schema
-from github_stats.schema import stats as stats_schema
+from github_stats.schema import (
+    Metric,
+    UserLoginCache,
+    Workflow,
+    DEFAULT_WINDOW,
+)
 from github_stats.gitops import Repo
-from github_stats.util import load_patterns
+from github_stats.util import load_patterns, load_user, load_stats
 
 calendar.setfirstweekday(calendar.SUNDAY)
 
@@ -50,6 +54,7 @@ class GithubAccess(object):
             method_whitelist=["GET"],
         )
         self._request = requests.Session()
+        self._r_timeout = config.get("request_timeout", 10)
         adapter = HTTPAdapter(max_retries=retry)
         self._request.mount("https://", adapter)
         self._request.headers.update(headers)
@@ -70,6 +75,8 @@ class GithubAccess(object):
         self.special_logins = config["repo"].get("special_logins", {})
         self.special_names = {v: k for k, v in self.special_logins.items()}
         self.broken_users = config["repo"].get("broken_users", [])
+        self.empty_retry_sleep = config.get("empty_retry_sleep", 3)
+        self.empty_retry_count = config.get("empty_retry_count", 3)
 
         self.tag_matches, self.bug_matches, self.pr_bug_matches = load_patterns(
             config["repo"].get("tag_patterns", []),
@@ -88,39 +95,59 @@ class GithubAccess(object):
         Actual stats object
         """
         self.contributor_collection_time = 0
-        self.user_login_cache = deepcopy(user_login_cache_schema)
-        self.stats = deepcopy(stats_schema)
-        self.stats["pull_requests"]["labels"] = {
-            label: {
-                "total_window_prs": 0,
-                "total_prs": 0,
+        self.user_login_cache = UserLoginCache(logins=dict(), names=dict())
+        self.stats = load_stats()
+        self.stats["pr_labels"] = {
+            label.replace("_", "-"): {
+                "window_labelled_prs_total": Metric(
+                    name="window_labelled_prs_total",
+                    value=0,
+                    description="Number of PRs with a particular label in our collection window",
+                    type="gauge",
+                ),
+                "labelled_prs_total": Metric(
+                    name="labelled_prs_total",
+                    value=0,
+                    description="Total number of PRs with a particular label",
+                    type="counter",
+                ),
             }
-            for label in self.label_matches
+            for label in self.label_matches.keys()
         }
-        self.stats["tag_matches"] = {t: 0 for t in self.tag_matches.keys()}
+        self.stats["tag_matches"] = {
+            t: Metric(
+                name=t,
+                value=0,
+                description="PRs associated with a particular tag or regex pattern",
+                type="gauge",
+            )
+            for t in self.tag_matches.keys()
+        }
         self.starttime = time.time()
         self._load_contributors()
 
     def _retry_empty(self, url):
         """
-        Occasionally cold-cache queries to Github return empty results.
+        Occasionally queries to Github return empty results.
         We'll set up a retry loop to avoid that (since the built-in
         requests retry object can't retry on results values)
         This wrapper also gives us an easy place to add a default
         timeout to the requests calls without having to set up
         a whole timeout object.
         """
-        for retry in range(0, 3):
-            res = self._request.get(url, timeout=10)
+        for retry in range(self.empty_retry_count):
+            res = self._request.get(url, timeout=self._r_timeout)
             res.raise_for_status()
             data = res.json()
             if data:
                 return data, res.links
-            time.sleep(3)
+            time.sleep(self.empty_retry_sleep)
         else:
             return [], {}
 
-    def _github_query(self, url, key=None, params=None):
+    def _github_query(
+        self, url: str, key: Optional[str] = None, params: Optional[dict] = None
+    ):
         """
         Query paginated endpoint from Github
 
@@ -163,7 +190,7 @@ class GithubAccess(object):
                 yield data
             next_url = links.get("next", dict()).get("url", "")
 
-    def _cache_user_login(self, login):
+    def _cache_user_login(self, login: str) -> str:
         """
         Return user's name based on their Github login
         (this is so we can avoid having two keys for the same user)
@@ -171,26 +198,27 @@ class GithubAccess(object):
         :returns: User's name
         :rtype: str
         """
-        if login in self.user_login_cache["logins"]:
-            return self.user_login_cache["logins"][login]
+        clean_login = login.replace("_", "-")
+        if clean_login in self.user_login_cache["logins"]:
+            return self.user_login_cache["logins"][clean_login]
         url = f"/users/{login}"
         try:
             user = [u for u in self._github_query(url)][0]
         except Exception as e:
             self.log.warning(f"{login} doesn't match a Github user! {e}")
             return ""
-        self.log.debug(f"Caching {user} for {login}")
-        name = user["name"] or login
+        self.log.debug(f"Caching {user} for {clean_login}")
+        name = user["name"] or clean_login
         if not user["name"] and name in self.special_names:
             name = self.special_names[name]
-        self.user_login_cache["logins"][login] = name
-        self.user_login_cache["names"][name] = login
+        self.user_login_cache["logins"][clean_login] = name
+        self.user_login_cache["names"][name] = clean_login
         if name not in self.stats["users"]:
-            self.stats["users"][name] = deepcopy(user_schema)
-        self.log.debug(f"Returned name: {self.user_login_cache['logins'][login]}")
-        return self.user_login_cache["logins"][login]
+            self.stats["users"][name] = load_user(name)
+        self.log.debug(f"Returned name: {self.user_login_cache['logins'][clean_login]}")
+        return self.user_login_cache["logins"][clean_login]
 
-    def _cache_user_name(self, name):
+    def _cache_user_name(self, name: str) -> str:
         """
         Return user's actual login based on their Github name
         (this is so we can avoid having two keys for the same user)
@@ -208,7 +236,7 @@ class GithubAccess(object):
             f"User {name} doesn't exist in cache or in {self.special_logins}!"
         )
 
-    def _load_contributors(self):
+    def _load_contributors(self) -> None:
         """
         Configure all users that have commits into the repo
 
@@ -226,10 +254,10 @@ class GithubAccess(object):
         self.stats["users"]["unknown"] = deepcopy(user_schema)
         self.contributor_collection_time = time.time() - starttime
         self.log.info(
-            f"Loaded contributors in {self.contributor_collection_time} seconds"
+            f"Loaded contributors in {self.stats['contributor_collection_time_secs']['value']} seconds"
         )
 
-    def _set_collection_date(self, date, window):
+    def _set_collection_date(self, date: datetime, window: int) -> None:
         if not self.stats["collection_date"]:
             self.stats["collection_date"] = date
             self.log.debug(f"Collection timestamp: {date}")
@@ -237,7 +265,9 @@ class GithubAccess(object):
             self.stats["window"] = window * 4
             self.log.debug(f"Collection window: {window}")
 
-    def load_all_stats(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
+    def load_all_stats(
+        self, base_date=datetime.today(), window: Optional[int] = DEFAULT_WINDOW
+    ) -> None:
         """
         Wrapper to execute all stat collection functions
 
@@ -249,8 +279,18 @@ class GithubAccess(object):
         self.load_branches(base_date, window)
         self.load_repo_stats(base_date, window)
         mttr, windowed_mttr = self.repo.match_bugfixes(self.stats["bug_matches"])
-        self.stats["mttr"] = mttr
-        self.stats["windowed_mttr"] = windowed_mttr
+        self.stats["mttr_secs"] = Metric(
+            name="mttr_secs",
+            value=mttr,
+            description="Average seconds that a bug is open",
+            type="gauge",
+        )
+        self.stats["windowed_mttr_secs"] = Metric(
+            name="windowed_mttr_secs",
+            value=windowed_mttr,
+            description="Average seconds a bug is open in our collection window",
+            type="gauge",
+        )
         if self.tagged_releases:
             self.log.debug(f"Tracking releases with tags: {self.tag_matches}")
             rt = self.repo.tag_releases(base_date, window)
@@ -275,9 +315,13 @@ class GithubAccess(object):
         else:
             self.log.debug(f"Tracking releases as commits to {self.release_branch}")
         self.load_workflow_runs(base_date, window)
-        self.stats["collection_time_secs"] = time.time() - self.starttime
+        self.stats["total_collection_time_secs"] = time.time() - self.starttime
 
-    def load_pull_requests(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
+    def load_pull_requests(
+        self,
+        base_date: Optional[datetime] = datetime.today(),
+        window: Optional[int] = DEFAULT_WINDOW,
+    ) -> None:
         """
         Collect pull request data
 
@@ -299,24 +343,24 @@ class GithubAccess(object):
                 self.log.debug(f"{pull['title']} was created in the future. Skipping")
                 continue
             modified_time = datetime.strptime(pull["updated_at"], "%Y-%m-%dT%H:%M:%SZ")
-            self.stats["pull_requests"]["total_pull_requests"] += 1
+            self.stats["pull_requests_total"]["value"] += 1
             author = self._cache_user_login(pull["user"]["login"])
-            self.stats["users"][author]["total_pull_requests"] += 1
+            self.stats["users"][author]["pull_requests_total"]["value"] += 1
 
             if pull["state"] == "open":
-                self.stats["pull_requests"]["total_open_pull_requests"] += 1
-                self.stats["users"][author]["total_open_pull_requests"] += 1
+                self.stats["open_pull_requests_total"]["value"] += 1
+                self.stats["users"][author]["open_pull_requests_total"]["value"] += 1
             if pull["draft"]:
-                self.stats["pull_requests"]["total_draft_pull_requests"] += 1
-                self.stats["users"][author]["total_draft_pull_requests"] += 1
+                self.stats["draft_pull_requests_total"]["value"] += 1
+                self.stats["users"][author]["draft_pull_requests_total"]["value"] += 1
 
             # worth also catching pull requests created in our window
             if created < base_date and created > td:
-                self.stats["pull_requests"]["total_window_pull_requests"] += 1
-                self.stats["users"][author]["total_window_pull_requests"] += 1
+                self.stats["window_pull_requests"]["value"] += 1
+                self.stats["users"][author]["window_pull_requests"]["value"] += 1
             elif modified_time < base_date and modified_time > td:
-                self.stats["pull_requests"]["total_window_pull_requests"] += 1
-                self.stats["users"][author]["total_window_pull_requests"] += 1
+                self.stats["window_pull_requests"]["value"] += 1
+                self.stats["users"][author]["window_pull_requests"]["value"] += 1
 
             # Calculate avg PR time
             created = datetime.strptime(pull["created_at"], "%Y-%m-%dT%H:%M:%SZ")
@@ -325,45 +369,61 @@ class GithubAccess(object):
             merged_ts = None
             if not merged:
                 closed = pull.get("closed_at", None)
-                self.stats["pull_requests"]["total_closed_pull_requests"] += 1
-                self.stats["users"][author]["total_closed_pull_requests"] += 1
+                self.stats["closed_pull_requests_total"]["value"] += 1
+                self.stats["users"][author]["closed_pull_requests_total"]["value"] += 1
             else:
-                self.stats["pull_requests"]["total_merged_pull_requests"] += 1
-                self.stats["users"][author]["total_merged_pull_requests"] += 1
+                self.stats["merged_pull_requests_total"]["value"] += 1
+                self.stats["users"][author]["merged_pull_requests_total"]["value"] += 1
             if merged or closed:
                 if merged:
                     endtime = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ")
                 else:
                     endtime = datetime.strptime(closed, "%Y-%m-%dT%H:%M:%SZ")
                 timeopen = (endtime - created).total_seconds()
-                self.stats["pull_requests"]["total_pr_time_open_secs"] += timeopen
-                self.stats["users"][author]["total_pr_time_open_secs"] += timeopen
+                self.stats["pr_time_open_secs_total"]["value"] += timeopen
+                self.stats["users"][author]["pr_time_open_secs_total"][
+                    "value"
+                ] += timeopen
             if merged:
                 merged_ts = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ").timestamp()
 
             # process/count labels of this PR
             for label in pull["labels"]:
-                name = label["name"]
+                name = label["name"].replace("_", "-")
                 for labelname, matches in self.label_matches.items():
                     if name not in matches:
                         continue
                     self.log.debug(f"{title}: {name} ({matches=}) for {label}")
-                    self.stats["pull_requests"]["labels"][labelname]["total_prs"] += 1
+                    self.stats["pr_labels"][labelname]["labelled_prs_total"][
+                        "value"
+                    ] += 1
                     if modified_time < base_date and modified_time > td:
-                        self.stats["pull_requests"]["labels"][labelname][
-                            "total_window_prs"
+                        self.stats["pr_labels"][labelname]["window_labelled_prs_total"][
+                            "value"
                         ] += 1
                 if name not in self.label_matches.keys():
-                    if name not in self.stats["pull_requests"]["labels"]:
-                        self.stats["pull_requests"]["labels"][name] = {
-                            "total_prs": 1,
-                            "total_window_prs": 0,
+                    if name not in self.stats["pr_labels"]:
+                        self.stats["pr_labels"][name] = {
+                            "window_labelled_prs_total": Metric(
+                                name="window_labelled_prs_total",
+                                value=1,
+                                description="Number of PRs with a particular label in our collection window",
+                                type="gauge",
+                            ),
+                            "labelled_prs_total": Metric(
+                                name="labelled_prs_total",
+                                value=0,
+                                description="Total number of PRs with a particular label",
+                                type="counter",
+                            ),
                         }
                     else:
-                        self.stats["pull_requests"]["labels"][name]["total_prs"] += 1
+                        self.stats["pr_labels"][name]["labelled_prs_total"][
+                            "value"
+                        ] += 1
                     if modified_time < base_date and modified_time > td:
-                        self.stats["pull_requests"]["labels"][name][
-                            "total_window_prs"
+                        self.stats["pr_labels"][name]["window_labelled_prs_total"][
+                            "value"
                         ] += 1
                 if merged_ts and name in self.pr_bug_matches:
                     self.stats["bug_matches"].append((title, commit, merged_ts))
@@ -393,19 +453,20 @@ class GithubAccess(object):
         Generate average PR time after collecting all stats
         to get better numbers
         """
-        if self.stats["pull_requests"]["total_pull_requests"] > 0:
-            self.stats["pull_requests"]["avg_pr_time_open_secs"] = (
-                self.stats["pull_requests"]["total_pr_time_open_secs"]
-                / self.stats["pull_requests"]["total_pull_requests"]
+        if self.stats["pull_requests_total"]["value"] > 0:
+            self.stats["avg_pr_time_open_secs"]["value"] = (
+                self.stats["pr_time_open_secs_total"]["value"]
+                / self.stats["pull_requests_total"]["value"]
             )
         for user, data in self.stats["users"].items():
-            if data["total_pull_requests"] > 0:
-                self.stats["users"][user]["avg_pr_time_open_secs"] = (
-                    data["total_pr_time_open_secs"] / data["total_pull_requests"]
+            if data["pull_requests_total"]["value"] > 0:
+                self.stats["users"][user]["avg_pr_time_open_secs"]["value"] = (
+                    data["pr_time_open_secs_total"]["value"]
+                    / data["pull_requests_total"]["value"]
                 )
-        self.stats["pull_requests"]["collection_time"] = time.time() - starttime
+        self.stats["pr_collection_time_secs"]["value"] = time.time() - starttime
         self.log.info(
-            f"Loaded pull requests in {self.stats['pull_requests']['collection_time']} seconds"
+            f"Loaded pull requests in {self.stats['pr_collection_time_secs']['value']} seconds"
         )
 
     def load_commits(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
@@ -425,7 +486,6 @@ class GithubAccess(object):
         base_ts = base_date.timestamp()
         starttime = time.time()
         self.log.info("Loading commit details...")
-        self.stats["commits"]["collection_time"] = time.time() - starttime
         for branchdata in self.repo.list_branches():
             branch, last_commit = branchdata
             self.log.debug(f"Processing commits to {branch}")
@@ -436,7 +496,9 @@ class GithubAccess(object):
                     )
                     continue
                 try:
-                    user = self._cache_user_name(commit["author"].split(" <")[0])
+                    user = self._cache_user_name(
+                        commit["author"].split(" <")[0].replace("_", "-")
+                    )
                 except Exception:
                     user = "unknown"
                 if not user:
@@ -454,22 +516,32 @@ class GithubAccess(object):
                         self.stats["releases"]["total_window_releases"] += 1
                         self.stats["users"][user]["total_window_releases"] += 1
                 if branch in self.stats["commits"]["branch_commits"]:
-                    self.stats["commits"]["branch_commits"][branch][
-                        "total_commits"
-                    ] += 1
+                    self.stats["branch_commits"][branch]["commits_total"]["value"] += 1
                     if td_ts < commit["time"] < base_ts:
                         self.log.debug(f"Window commit: {pprint.pformat(commit)}")
-                        self.stats["commits"]["branch_commits"][branch][
-                            "window_commits"
+                        self.stats["branch_commits"][branch]["commits_window_total"][
+                            "value"
                         ] += 1
                 else:
-                    self.stats["commits"]["branch_commits"][branch] = {
-                        "total_commits": 1,
-                        "window_commits": 0,
+                    self.stats["branch_commits"][branch] = {
+                        "commits_total": Metric(
+                            name="commits_total",
+                            value=1,
+                            labels={"branch": branch},
+                            description="Total commits to a specific branch",
+                            type="counter",
+                        ),
+                        "commits_window_total": Metric(
+                            name="commits_window_total",
+                            value=0,
+                            labels={"branch": branch},
+                            description="number of commits to a branch within our window",
+                            type="gauge",
+                        ),
                     }
                     if td_ts < commit["time"] < base_ts:
-                        self.stats["commits"]["branch_commits"][branch][
-                            "window_commits"
+                        self.stats["branch_commits"][branch]["commits_window_total"][
+                            "value"
                         ] += 1
 
         (
@@ -478,13 +550,13 @@ class GithubAccess(object):
             unreleased_commits,
             total_commits,
         ) = self.repo.commit_release_matching(base_date, window)
-        self.stats["commits"]["avg_commit_time"] = avg_commit_time
-        self.stats["commits"]["windowed_commit_time"] = windowed_commit_time
-        self.stats["commits"]["unreleased_commits"] = unreleased_commits
-        self.stats["commits"]["collection_time"] = time.time() - starttime
-        self.stats["commits"]["total_commits"] = total_commits
+        self.stats["avg_commit_time_secs"]["value"] = avg_commit_time
+        self.stats["windowed_commit_time_secs"]["value"] = windowed_commit_time
+        self.stats["unreleased_commits_total"]["value"] = unreleased_commits
+        self.stats["commits_total"]["value"] = total_commits
+        self.stats["commits_collection_time_secs"]["value"] = time.time() - starttime
         self.log.info(
-            f"Loaded commit history in {self.stats['commits']['collection_time']} seconds"
+            f"Loaded commit history in {self.stats['commits_collection_time_secs']['value']} seconds"
         )
 
     def load_branches(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
@@ -504,15 +576,16 @@ class GithubAccess(object):
         starttime = time.time()
         self.log.info("Loading branch details...")
         url = f"/repos/{self.repo_name}/branches"
-        self.stats["commits"]["collection_time"] = time.time() - starttime
         for branchdata in self.repo.list_branches():
             branch, last_commit = branchdata
             self.log.debug(f"Processing meta data for {branch}")
-            self.stats["branches"]["total_branches"] += 1
+            self.stats["branches_total"]["value"] += 1
             if branch == self.main_branch:
-                self.stats["main_branch_commits"] += 1
+                self.stats["main_branch_commits_total"]["value"] += 1
+                if td_ts < int(last_commit) < base_ts:
+                    self.stats["window_main_branch_commits"]["value"] += 1
             if td_ts < int(last_commit) < base_ts:
-                self.stats["branches"]["total_window_branches"] += 1
+                self.stats["window_branches"]["value"] += 1
 
             """
             Branch author data is harder to suss out from git
@@ -529,7 +602,7 @@ class GithubAccess(object):
                 pass
             else:
                 if not data or not data["commit"]["commit"]["author"]["name"]:
-                    self.stats["branches"]["total_empty_branches"] += 1
+                    self.stats["empty_branches_total"] += 1
                     self.log.debug(
                         f"{branch} is missing branch information. Skipping..."
                     )
@@ -544,18 +617,17 @@ class GithubAccess(object):
                     )
                     continue
                 if data["protected"]:
-                    self.stats["branches"]["protected_branches"] += 1
+                    self.stats["protected_branches"]["value"] += 1
                 if data["commit"].get("author", None):
                     author = self._cache_user_login(data["commit"]["author"]["login"])
-                    self.stats["users"][author]["total_branches"] += 1
+                    self.stats["users"][author]["branches_total"]["value"] += 1
                     # 2020-12-30T03:19:29Z (RFC3339)
                     if dt_updated < base_date and dt_updated > td:
-                        self.stats["users"][author]["total_window_branches"] += 1
-                        self.log.debug(f"{branch=}: created {dt_updated}")
+                        self.stats["users"][author]["window_branches"]["value"] += 1
 
-        self.stats["branches"]["collection_time"] = time.time() - starttime
+        self.stats["branches_collection_time_secs"]["value"] = time.time() - starttime
         self.log.info(
-            f"Loaded branch details in {self.stats['branches']['collection_time']} seconds"
+            f"Loaded branch details in {self.stats['branches_collection_time_secs']['value']} seconds"
         )
 
     def load_repo_stats(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
@@ -619,8 +691,20 @@ class GithubAccess(object):
                 f"Week {ts_date}, Additions: {additions}, Deletions: {deletions}"
             )
             self.stats["repo_stats"]["code_frequency"][str(ts_date)] = {
-                "additions": additions,
-                "deletions": deletions,
+                "additions": Metric(
+                    name="additions",
+                    value=additions,
+                    labels={"week": str(ts_date)},
+                    description="All additions made in a week",
+                    type="counter",
+                ),
+                "commits_window_total": Metric(
+                    name="commits_window_total",
+                    value=deletions,
+                    labels={"week": str(ts_date)},
+                    description="All deletions made in a week",
+                    type="gauge",
+                ),
             }
 
         """
@@ -658,13 +742,25 @@ class GithubAccess(object):
                 continue
             self.stats["repo_stats"]["commit_activity"][str(ts_date)] = {
                 "daily": dict(),
-                "total_commits": week["total"],
+                "commits_total": Metric(
+                    name="commits_window_total",
+                    value=week["total"],
+                    labels={"week": str(ts_date)},
+                    description="Weekly total commits",
+                    type="gauge",
+                ),
             }
             for date_offset in range(0, 7):
                 newdate = ts_date + timedelta(date_offset)
                 self.stats["repo_stats"]["commit_activity"][str(ts_date)]["daily"][
                     str(newdate)
-                ] = week["days"][date_offset]
+                ] = Metric(
+                    name="commits_window_total",
+                    value=week["days"][date_offset],
+                    labels={"week": str(ts_date), "day": date_offset},
+                    description="Daily commits from Github Repo Stats",
+                    type="gauge",
+                )
         """
         Contributors:
         """
@@ -679,7 +775,7 @@ class GithubAccess(object):
                 continue
             user = self._cache_user_login(contributor["author"]["login"])
             self.stats["repo_stats"]["contributors"][user] = {
-                "total_commits": contributor["total"],
+                "commits_total": contributor["total"],
                 "weeks": dict(),
             }
             for week in contributor["weeks"]:
@@ -726,11 +822,11 @@ class GithubAccess(object):
                 continue
             day_no, hour, commits = hourtuple
             day_name = calendar.day_name[day_no]
-            self.stats["repo_stats"]["punchcard"]["total_commits"] += commits
+            self.stats["repo_stats"]["punchcard"]["commits_total"] += commits
             if day_name in self.stats["repo_stats"]["punchcard"]["days"]:
                 self.stats["repo_stats"]["punchcard"]["days"][day_name][hour] = commits
                 self.stats["repo_stats"]["punchcard"]["days"][day_name][
-                    "total_commits"
+                    "commits_total"
                 ] += commits
                 busiest_hour = self.stats["repo_stats"]["punchcard"]["days"][day_name][
                     "busiest_hour"
@@ -747,7 +843,7 @@ class GithubAccess(object):
             else:
                 self.stats["repo_stats"]["punchcard"]["days"][day_name] = {
                     hour: commits,
-                    "total_commits": commits,
+                    "commits_total": commits,
                     "busiest_hour": hour,
                 }
         """
@@ -757,15 +853,15 @@ class GithubAccess(object):
         """
         self.stats["repo_stats"]["punchcard"]["sorted_days"] = sorted(
             [
-                (k, v["total_commits"])
+                (k, v["commits_total"])
                 for k, v in self.stats["repo_stats"]["punchcard"]["days"].items()
             ],
             key=lambda k: k[1],
             reverse=True,
         )
-        self.stats["repo_stats"]["collection_time"] = time.time() - starttime
+        self.stats["repo_stats"]["collection_time_secs"] = time.time() - starttime
         self.log.info(
-            f"Loaded repo stats in {self.stats['repo_stats']['collection_time']} seconds"
+            f"Loaded repo stats in {self.stats['repo_stats']['collection_time_secs']} seconds"
         )
 
     def load_releases(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
@@ -789,18 +885,13 @@ class GithubAccess(object):
                 self.log.debug(f"Release {name} was created in the future. Skipping.")
                 continue
             if dt_created <= base_date and dt_created >= td:
-                self.stats["releases"]["total_window_releases"] += 1
-                self.stats["users"][user]["total_window_releases"] += 1
-            self.stats["releases"]["total_releases"] += 1
-            self.stats["releases"]["releases"][name] = {
-                "created_at": str(dt_created),
-                "author": user,
-                "body": release["body"],
-            }
-            self.stats["users"][user]["total_releases"] += 1
-        self.stats["releases"]["collection_time"] = time.time() - starttime
+                self.stats["window_releases"] += 1
+                self.stats["users"][user]["window_releases"] += 1
+            self.stats["releases_total"] += 1
+            self.stats["users"][user]["releases_total"] += 1
+        self.stats["release_collection_time_secs"] = time.time() - starttime
         self.log.info(
-            f"Loaded release details in {self.stats['releases']['collection_time']} seconds"
+            f"Loaded release details in {self.stats['release_collection_time_secs']} seconds"
         )
 
     def load_workflow_runs(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
@@ -816,7 +907,7 @@ class GithubAccess(object):
         url = f"/repos/{self.repo_name}/actions/runs"
         # only request workflow detail within window
         for run in self._github_query(url, key="workflow_runs"):
-            workflow = run["name"]
+            workflow = run["name"].replace("_", "-")
             status = run["conclusion"]
             # reasons to skip
             if workflow in self.ignored_workflows:
@@ -839,7 +930,7 @@ class GithubAccess(object):
             try:
                 user = self._cache_user_login(run["triggering_actor"]["login"])
             except Exception:
-                name = run["head_commit"]["author"]["name"]
+                name = run["head_commit"]["author"]["name"].replace("_", "-")
                 if name in self.broken_users:
                     continue
                 try:
@@ -851,12 +942,12 @@ class GithubAccess(object):
                     continue
             event = run["event"]
             # Track event stats
-            if event in self.stats["workflows"]["events"]:
-                self.stats["workflows"]["events"][event]["total"] += 1
+            if event in self.stats["workflow_events"]:
+                self.stats["workflow_events"][event]["total"] += 1
             else:
-                self.stats["workflows"]["events"][event] = {"total": 1, "window": 0}
+                self.stats["workflow_events"][event] = {"total": 1, "window": 0}
             if dt_created > td and dt_created < base_date:
-                self.stats["workflows"]["events"][event]["window"] += 1
+                self.stats["workflow_events"][event]["window"] += 1
 
             # Track user stats
             if event not in self.non_user_events:
@@ -878,28 +969,20 @@ class GithubAccess(object):
                     self.stats["users"][user]["workflow_totals"][status] = 1
 
             # Track workflow stats
-            if workflow in self.stats["workflows"]["workflows"]:
-                self.stats["workflows"]["workflows"][workflow]["total_window_runs"] += 1
-                if status in self.stats["workflows"]["workflows"][workflow]["runs"]:
-                    self.stats["workflows"]["workflows"][workflow]["runs"][status] += 1
+            if workflow in self.stats["workflows"]:
+                self.stats["workflows"][workflow]["window_runs_total"] += 1
+                if status in self.stats["workflows"][workflow]["runs"]:
+                    self.stats["workflows"][workflow]["runs"][status] += 1
                 else:
-                    self.stats["workflows"]["workflows"][workflow]["runs"][status] = 1
+                    self.stats["workflows"][workflow]["runs"][status] = 1
             else:
-                self.stats["workflows"]["workflows"][workflow] = {
-                    "retries": 0,
-                    "last_run": run["run_number"],
-                    "total_window_runs": 1,
-                    "runs": {status: 1},
-                }
+                self.stats["workflows"][workflow] = Workflow()
+                self.stats["workflows"][workflow]["last_run"] = run["run_number"]
+                self.stats["workflows"][workflow]["runs"][status] = 1
             if run["run_attempt"] > 1:
-                self.stats["workflows"]["workflows"][workflow]["retries"] += 1
-            if (
-                run["run_number"]
-                > self.stats["workflows"]["workflows"][workflow]["last_run"]
-            ):
-                self.stats["workflows"]["workflows"][workflow]["last_run"] = run[
-                    "run_number"
-                ]
+                self.stats["workflows"][workflow]["retries"] += 1
+            if run["run_number"] > self.stats["workflows"][workflow]["last_run"]:
+                self.stats["workflows"][workflow]["last_run"] = run["run_number"]
 
         """
         calculate percentage of runs executed in this window
@@ -907,8 +990,8 @@ class GithubAccess(object):
         We have to do this once we've collected all the expected
         workflow data to ensure the math works out correctly
         """
-        for workflow, data in self.stats["workflows"]["workflows"].items():
-            window_runs = data["total_window_runs"]
+        for workflow, data in self.stats["workflows"].items():
+            window_runs = data["window_runs_total"]
             last_run = data["last_run"]
             success = data["runs"].get("success", 0)
             fail = data["runs"].get("failure", 0)
@@ -916,50 +999,40 @@ class GithubAccess(object):
             start_fail = data["runs"].get("startup_failure", 0)
             skipped = data["runs"].get("skipped", 0)
 
-            self.stats["workflows"]["workflows"][workflow][
+            self.stats["workflows"][workflow][
                 "window_runs_of_total_percentage"
             ] = round((window_runs / last_run) * 100, 2)
             if success > 0:
-                self.stats["workflows"]["workflows"][workflow][
-                    "run_success_percentage"
-                ] = round((success / window_runs) * 100, 2)
+                self.stats["workflows"][workflow]["run_success_percentage"] = round(
+                    (success / window_runs) * 100, 2
+                )
             else:
-                self.stats["workflows"]["workflows"][workflow][
-                    "run_success_percentage"
-                ] = 0
+                self.stats["workflows"][workflow]["run_success_percentage"] = 0
             if fail > 0:
-                self.stats["workflows"]["workflows"][workflow][
-                    "run_failure_percentage"
-                ] = round((fail / window_runs) * 100, 2)
+                self.stats["workflows"][workflow]["run_failure_percentage"] = round(
+                    (fail / window_runs) * 100, 2
+                )
             else:
-                self.stats["workflows"]["workflows"][workflow][
-                    "run_failure_percentage"
-                ] = 0
+                self.stats["workflows"][workflow]["run_failure_percentage"] = 0
             if cancelled > 0:
-                self.stats["workflows"]["workflows"][workflow][
-                    "run_cancelled_percentage"
-                ] = round((cancelled / window_runs) * 100, 2)
+                self.stats["workflows"][workflow]["run_cancelled_percentage"] = round(
+                    (cancelled / window_runs) * 100, 2
+                )
             else:
-                self.stats["workflows"]["workflows"][workflow][
-                    "run_cancelled_percentage"
-                ] = 0
+                self.stats["workflows"][workflow]["run_cancelled_percentage"] = 0
             if start_fail > 0:
-                self.stats["workflows"]["workflows"][workflow][
+                self.stats["workflows"][workflow][
                     "run_startup_failure_percentage"
                 ] = round((start_fail / window_runs) * 100, 2)
             else:
-                self.stats["workflows"]["workflows"][workflow][
-                    "run_startup_failure_percentage"
-                ] = 0
+                self.stats["workflows"][workflow]["run_startup_failure_percentage"] = 0
             if skipped > 0:
-                self.stats["workflows"]["workflows"][workflow][
-                    "run_skipped_percentage"
-                ] = round((skipped / window_runs) * 100, 2)
+                self.stats["workflows"][workflow]["run_skipped_percentage"] = round(
+                    (skipped / window_runs) * 100, 2
+                )
             else:
-                self.stats["workflows"]["workflows"][workflow][
-                    "run_skipped_percentage"
-                ] = 0
-        self.stats["workflows"]["collection_time"] = time.time() - starttime
+                self.stats["workflows"][workflow]["run_skipped_percentage"] = 0
+        self.stats["workflow_collection_time_secs"] = time.time() - starttime
         self.log.info(
-            f"Loaded workflow details in {self.stats['workflows']['collection_time']} seconds"
+            f"Loaded workflow details in {self.stats['workflow_collection_time_secs']} seconds"
         )

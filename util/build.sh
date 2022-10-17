@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# Only create deploy credentials if they exist
 if [[ -n "${DEPLOY_KEY_FILE}" ]]; then
     echo "${DEPLOY_KEY_FILE}" > /tmp/credentials.json
     gcloud auth activate-service-account --key-file /tmp/credentials.json

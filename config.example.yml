@@ -34,6 +34,8 @@ repos:
     user_time_filter: False
     clone_url: https://github.com/organization/repo
 
+metric_prefix: github
+
 google:
   project_id: google-project
 
