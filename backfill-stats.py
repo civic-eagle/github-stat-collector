@@ -137,15 +137,15 @@ def main():
     # actually set up environment
     config = load_config(args.config)
 
-    for repo in config["repos"]:
-        local_config = copy.deepcopy(config)
-        local_config.pop("repos", None)
-        local_config["repo"] = repo
-        for run in range(
-            int(args.start_timestamp),
-            int(args.stop_timestamp),
-            int(args.timestamp_step),
-        ):
+    for run in range(
+        int(args.start_timestamp),
+        int(args.stop_timestamp),
+        int(args.timestamp_step),
+    ):
+        for repo in config["repos"]:
+            local_config = copy.deepcopy(config)
+            local_config.pop("repos", None)
+            local_config["repo"] = repo
             timestamp = datetime.utcfromtimestamp(run)
             logger.info(f"Processing data for {timestamp}...")
             # we should load GithubAccess every run to ensure we don't lose access tokens/etc.
