@@ -160,8 +160,8 @@ def main():
                     pass
             influx.format_stats(gh.stats)
             influx.write_stats()
-            # sleep for however long it takes to get to our next position
-            _wait(positions)
+        # sleep for however long it takes to get to our next position
+        _wait(positions)
 
 
 if __name__ == "__main__":
