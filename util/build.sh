@@ -4,7 +4,6 @@
 if [[ -n "${DEPLOY_KEY_FILE}" ]]; then
     echo "${DEPLOY_KEY_FILE}" > /tmp/credentials.json
     gcloud auth activate-service-account --key-file /tmp/credentials.json
-    gcloud auth configure-docker
 fi
 
 ROOT="gcr.io"
