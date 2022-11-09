@@ -4,6 +4,7 @@
 if [[ -n "${DEPLOY_KEY_FILE}" ]]; then
     echo "${DEPLOY_KEY_FILE}" > /tmp/credentials.json
     gcloud auth activate-service-account --key-file /tmp/credentials.json
+    rm -f /tmp/credentials.json
 fi
 
 ROOT="gcr.io"
@@ -17,5 +18,10 @@ docker run --rm -v "${SCRIPT_DIR}/../:/data" cytopia/black:latest .
 
 docker build --tag "${ROOT}/${PROJECT}/github-stat-collector:$TAG" .
 docker tag "${ROOT}/${PROJECT}/github-stat-collector:$TAG" "${ROOT}/${PROJECT}/github-stat-collector:latest"
-docker push "${ROOT}/${PROJECT}/github-stat-collector:$TAG"
-docker push "${ROOT}/${PROJECT}/github-stat-collector:latest"
+if [[ -n "${DEPLOY_KEY_FILE}" ]]; then
+    docker --config /opt/docker-config/ push "${ROOT}/${PROJECT}/github-stat-collector:$TAG"
+    docker --config /opt/docker-config/ push "${ROOT}/${PROJECT}/github-stat-collector:latest"
+else
+    docker push "${ROOT}/${PROJECT}/github-stat-collector:$TAG"
+    docker push "${ROOT}/${PROJECT}/github-stat-collector:latest"
+fi
