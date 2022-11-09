@@ -4,7 +4,7 @@ repos:
   - org: organization
     tagged_releases: false
     branch_releases: false
-    name: organization/repo
+    name: repo
     branches:
       main: develop
       release: release
@@ -32,7 +32,8 @@ repos:
       - user2@test.com
     # filter out users from tracking if they only have old commits
     user_time_filter: False
-    clone_url: https://github.com/organization/repo
+    # defaults to https://github.com/{org}/{repo}
+    # clone_url: https://github.com/organization/repo
 
 google:
   project_id: google-project
