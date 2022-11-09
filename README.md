@@ -27,6 +27,8 @@ Github doesn't support organization-level auth tokens (yet), so a user must make
 
 Configuration largely defines the repos (and any custom work to do in the repo) and the output location.
 
+_ssh urls (e.g. git@github.com:civic-eagle/github-stats-collector.git) for Github repos has not been tested in this tool and likely won't work._
+
 # Backfilling Data
 
 We can leverage the `backfill-stats.py` script to loop over longer time ranges and fill in data:
