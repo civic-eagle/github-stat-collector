@@ -9,6 +9,18 @@ This tool relies on `poetry` for dependency management. If you already have `poe
 
 Leveraging the Google output requires `poetry add opencensus opencensus-ext-stackdriver`. We normally keep these dependencies out of the program to significantly reduce install size and build time. You _will_ have problems with this output as Stackdriver doesn't allow negative numbers in custom metrics.
 
+# Github Auth Token
+
+Github doesn't support organization-level auth tokens (yet), so a user must make a personal auth token to get permissions for this tool to work. The [upstream docs](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) describe the basic pattern, but we need the following permissions on the token for it to work:
+
+- `admin:org`
+- `admin:repo_hook`
+- `delete:packages`
+- `notifications`
+- `repo`
+- `workflow`
+- `write:packages`
+
 # Configuration
 
 [Example configuration](config.exmaple.yml)
