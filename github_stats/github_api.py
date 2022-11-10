@@ -768,6 +768,31 @@ class GithubAccess(object):
             f"Loaded repo stats in {self.stats['repo_stats']['collection_time']} seconds"
         )
 
+    def return_releases(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
+        """
+        Get details about releases and return them without registering stats
+
+        As with PRs, we may want details about older releases, so
+        we don't filter the queries on time
+
+        :returns: List of Github Release dictionaries
+        :rtype: list
+        """
+        self.log.info("Loading release details...")
+        td = base_date - timedelta(days=window)
+        url = f"/repos/{self.repo_name}/releases"
+        releases = []
+        for release in self._github_query(url):
+            name = release["name"]
+            dt_created = datetime.strptime(release["created_at"], "%Y-%m-%dT%H:%M:%SZ")
+            if dt_created > base_date:
+                self.log.debug(f"Release {name} was created in the future. Skipping.")
+                continue
+            if dt_created <= base_date and dt_created >= td:
+                releases.append(release)
+
+        return releases
+
     def load_releases(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
         """
         Get details about releases
