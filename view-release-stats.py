@@ -107,8 +107,9 @@ def main():
                     total_delta += delta_in_minutes
                 release_average_delta_in_hours = round(total_delta / 60 / len(commit_times))
                 release_median_delta_in_hours = round(statistics.median(deltas_in_minutes) / 60)
-                logger.log(logging.INFO, f"Average delta for release, in hours: {release_average_delta_in_hours}")
-                logger.log(logging.INFO, f"Median delta for release, in hours: {release_median_delta_in_hours}")
+                lead_time_msg = "lead time for commit in release, in hours"
+                logger.log(logging.INFO, f"Average {lead_time_msg}: {release_average_delta_in_hours}")
+                logger.log(logging.INFO, f"Median {lead_time_msg}: {release_median_delta_in_hours}")
 
                 all_releases_total_commits += len(commit_times)
                 all_releases_total_delta_in_minutes += total_delta
@@ -120,9 +121,10 @@ def main():
             average_in_hours = round(all_releases_total_delta_in_minutes / 60 / all_releases_total_commits)
             median_in_hours = round(statistics.median(all_releases_commit_deltas_in_minutes) / 60)
             window_message = f"{args.window} days before {timestamp}"
+            lead_time_msg = "lead time for commit->release, in hours"
             logger.log(logging.INFO, f"Analyzed {len(releases)} releases found in {window_message}")
-            logger.log(logging.INFO, f"Average lead time in hours: {average_in_hours}")
-            logger.log(logging.INFO, f"Median lead time in hours: {median_in_hours}")
+            logger.log(logging.INFO, f"Average {lead_time_msg}: {average_in_hours}")
+            logger.log(logging.INFO, f"Median {lead_time_msg}: {median_in_hours}")
         else:
             logger.log(logging.INFO, f"Found no releases in specified window of {window_message}")
 
