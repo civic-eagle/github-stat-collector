@@ -145,7 +145,7 @@ class Repo(object):
         """
         :returns: total count of releases, windowed releases
         """
-        tagged_releases = {
+        release_stats = {
             "total_releases": 0,
             "users": dict(),
             "total_window_releases": 0,
@@ -154,20 +154,20 @@ class Repo(object):
         window_start_ts = (base_date - timedelta(window)).timestamp()
         for release in self.releases:
             user = release[2]
-            tagged_releases["total_releases"] += 1
+            release_stats["total_releases"] += 1
             if user in tagged_releases["users"]:
-                tagged_releases["users"][user]["total_releases"] += 1
+                release_stats["users"][user]["total_releases"] += 1
             else:
-                tagged_releases["users"][user] = {
+                release_stats["users"][user] = {
                     "total_window_releases": 0,
                     "total_releases": 1,
                 }
             # because we check for the user above this if statement, we don't have to check again inside it
             if window_start_ts < release[1] < window_end_ts:
-                tagged_releases["total_window_releases"] += 1
-                tagged_releases["users"][user]["total_window_releases"] += 1
-        self.log.debug(f"{tagged_releases=}")
-        return tagged_releases
+                release_stats["total_window_releases"] += 1
+                release_stats["users"][user]["total_window_releases"] += 1
+        self.log.debug(f"{release_stats=}")
+        return release_stats
 
     def match_bugfixes(
         self, pr_list, base_date=datetime.today(), window=DEFAULT_WINDOW
@@ -287,6 +287,32 @@ class Repo(object):
             return avg_commit_time, windowed_commit_time, unreleased_commits, commits
         else:
             return 0, 0, commits, commits
+
+    def commits_between_releases(self, release1, release2):
+        """
+        commit_times_output = subprocess.check_output(
+            [
+                "git",
+                "log",
+                "--format=%cI",
+                f"{release['tag_name']}...{last_release['tag_name']}",
+            ],
+            cwd=f"{SCRIPTDIR}/repos/{repo['name']}",
+        ).decode()
+        commit_times_split = commit_times_output.split("\n")
+        commit_times = [
+            i for i in commit_times_split if i
+        ]  # eliminate empty strings
+        """
+        walker = self.repoobj.walk(release1[0], pygit2.GIT_SORT_TIME)
+        commits = []
+        for commit in walker:
+            self.log.info(f"Commit {commit.hex} between {release1[0]}:{release1[1]} and {release2[0]}:{release2[1]}")
+            if commit.commit_time > release2[1]:
+                self.log.debug("Found commit more recent that last release time")
+                break
+            commits.append(commit)
+        return commits
 
     def branch_commit_log(self, branch_name):
         """
