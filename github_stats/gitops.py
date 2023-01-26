@@ -307,7 +307,9 @@ class Repo(object):
         walker = self.repoobj.walk(release1[0], pygit2.GIT_SORT_TIME)
         commits = []
         for commit in walker:
-            self.log.info(f"Commit {commit.hex} between {release1[0]}:{release1[1]} and {release2[0]}:{release2[1]}")
+            self.log.info(
+                f"Commit {commit.hex} between {release1[0]}:{release1[1]} and {release2[0]}:{release2[1]}"
+            )
             if commit.commit_time > release2[1]:
                 self.log.debug("Found commit more recent that last release time")
                 break
