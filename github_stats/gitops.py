@@ -155,7 +155,7 @@ class Repo(object):
         for release in self.releases:
             user = release[2]
             release_stats["total_releases"] += 1
-            if user in tagged_releases["users"]:
+            if user in release_stats["users"]:
                 release_stats["users"][user]["total_releases"] += 1
             else:
                 release_stats["users"][user] = {
