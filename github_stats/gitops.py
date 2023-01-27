@@ -31,7 +31,7 @@ class Repo(object):
             config["repo"].get("tag_patterns", []),
             config["repo"].get("bug_matching", {}),
         )
-        self._prep_repo()
+        self._prep_repo(tags=True)
 
     def _prep_repo(self):
         """
@@ -57,35 +57,38 @@ class Repo(object):
         self.main_branch_id = self._checkout_branch(
             self.primary_branches["main"]
         ).target
+        self._get_releases()
 
+    def _get_releases(self, tags=True):
         """
-        find all matching tags
+        find all matching releases
         and convert them to their corresponding commit objects
         This let's us do an OID comparison between each commit
         and the tag references
         """
-        self.log.debug(f"{self.tag_matches=}")
         self.releases = []
-        for r in self.repoobj.references:
-            self.log.debug(
-                f"Checking reference {r}, {self.repoobj.references[r].type} for tag matching"
-            )
-            # use this to short-circuit larger reference lists
-            if (
-                "tag" in r
-                and self.repoobj.references[r].type == pygit2.GIT_REF_OID
-                and any(v.match(r) for v in self.tag_matches.values())
-            ):
-                target = self.repoobj[self.repoobj.references[r].target]
-                if target.type == pygit2.GIT_OBJ_TAG:
-                    target = self.repoobj[target.target]
-                self.releases.append(
-                    (
-                        str(target.hex),
-                        int(target.commit_time),
-                        str(target.author),
-                    )
+        if tags:
+            self.log.debug(f"{self.tag_matches=}")
+            for r in self.repoobj.references:
+                self.log.debug(
+                    f"Checking reference {r}, {self.repoobj.references[r].type} for tag matching"
                 )
+                # use this to short-circuit larger reference lists
+                if (
+                    "tag" in r
+                    and self.repoobj.references[r].type == pygit2.GIT_REF_OID
+                    and any(v.match(r) for v in self.tag_matches.values())
+                ):
+                    target = self.repoobj[self.repoobj.references[r].target]
+                    if target.type == pygit2.GIT_OBJ_TAG:
+                        target = self.repoobj[target.target]
+                    self.releases.append(
+                        (
+                            str(target.hex),
+                            int(target.commit_time),
+                            str(target.author),
+                        )
+                    )
         # sort by commit timestamp
         self.releases.sort(key=lambda x: x[1])
 
