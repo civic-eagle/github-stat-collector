@@ -27,8 +27,6 @@ click = ">=8.0.0"
 mypy-extensions = ">=0.4.3"
 pathspec = ">=0.9.0"
 platformdirs = ">=2"
-tomli = {version = ">=1.1.0", markers = "python_full_version < \"3.11.0a7\""}
-typing-extensions = {version = ">=3.10.0.0", markers = "python_version < \"3.10\""}
 
 [package.extras]
 colorama = ["colorama (>=0.4.3)"]
@@ -336,14 +334,14 @@ files = [
 
 [[package]]
 name = "influxdb-client"
-version = "1.35.0"
+version = "1.36.0"
 description = "InfluxDB 2.0 Python client library"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "influxdb_client-1.35.0-py3-none-any.whl", hash = "sha256:a4c1751337bbfc0b0b0b2fb0fb285e66127bca21ae47a6b86b0bcf4fca05ee70"},
-    {file = "influxdb_client-1.35.0.tar.gz", hash = "sha256:eaef9fb9adcdc9868b50770602bf06c662e9cf4a390d09f14c8e888f3947adbb"},
+    {file = "influxdb_client-1.36.0-py3-none-any.whl", hash = "sha256:2dfab11e5a0b88e09a9c4ce05cc1f15bac1fed493c31534e6d5be050dac469bb"},
+    {file = "influxdb_client-1.36.0.tar.gz", hash = "sha256:fdbedd1c72db4b928084cb04bea28b5433d214fb9b136e89a5ffa943de282af1"},
 ]
 
 [package.dependencies]
@@ -722,18 +720,6 @@ files = [
 ]
 
 [[package]]
-name = "tomli"
-version = "2.0.1"
-description = "A lil' TOML parser"
-category = "dev"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc"},
-    {file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
-]
-
-[[package]]
 name = "typing-extensions"
 version = "4.4.0"
 description = "Backported and Experimental Type Hints for Python 3.7+"
@@ -764,5 +750,5 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.9"
-content-hash = "6c667e23bb8960caf068c8019f7efba6fe589ad6d0834d82475e6cdbd21d45dd"
+python-versions = "^3.11"
+content-hash = "7360f533f095ab9f8e272a802b2ccec60abc941737d1a72b5235a4b7ae3a8287"
