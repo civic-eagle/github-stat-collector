@@ -33,9 +33,9 @@ class Repo(object):
         )
         self._prep_repo()
         if config["repo"].get("tagged_releases", False):
-            self._get_releases(tags=True)
+            self._get_releases(release_type="tag")
         else:
-            self._get_releases(branch=True)
+            self._get_releases(release_type="branch")
 
     def _prep_repo(self):
         """
@@ -62,15 +62,16 @@ class Repo(object):
             self.primary_branches["main"]
         ).target
 
-    def _get_releases(self, branch=False, tag=False):
+    def _get_releases(self, release_type="tag"):
         """
-        find all matching releases
+        find all matching releases based on defined release "type"
         and convert them to their corresponding commit objects
         This let's us do an OID comparison between each commit
-        and the tag references
+        and the tag references on tag-based releases
+        but still get a list of "release" commits on branch-based releases
         """
         self.releases = []
-        if tag:
+        if release_type == "tag":
             for r in self.repoobj.references:
                 self.log.debug(
                     f"Checking reference {r}, {self.repoobj.references[r].type} for tag matching"
@@ -91,7 +92,7 @@ class Repo(object):
                             str(target.author),
                         )
                     )
-        elif branch:
+        elif release_type == "branch":
             for commit in self.branch_commit_log(self.primary_branches["release"]):
                 self.releases.append(
                     (
