@@ -31,7 +31,11 @@ class Repo(object):
             config["repo"].get("tag_patterns", []),
             config["repo"].get("bug_matching", {}),
         )
-        self._prep_repo(tags=True)
+        self._prep_repo()
+        if config["repo"].get("tagged_releases", False):
+            self._get_releases(tags=True)
+        else:
+            self._get_releases(branch=True)
 
     def _prep_repo(self):
         """
@@ -57,9 +61,8 @@ class Repo(object):
         self.main_branch_id = self._checkout_branch(
             self.primary_branches["main"]
         ).target
-        self._get_releases()
 
-    def _get_releases(self, tags=True):
+    def _get_releases(self, branch=False, tag=False):
         """
         find all matching releases
         and convert them to their corresponding commit objects
@@ -67,8 +70,7 @@ class Repo(object):
         and the tag references
         """
         self.releases = []
-        if tags:
-            self.log.debug(f"{self.tag_matches=}")
+        if tag:
             for r in self.repoobj.references:
                 self.log.debug(
                     f"Checking reference {r}, {self.repoobj.references[r].type} for tag matching"
@@ -89,6 +91,16 @@ class Repo(object):
                             str(target.author),
                         )
                     )
+        elif branch:
+            for commit in self.branch_commit_log(self.primary_branches["release"]):
+                self.releases.append(
+                    (
+                        commit["hash"],
+                        commit["time"],
+                        commit["author"],
+                    )
+                )
+
         # sort by commit timestamp
         self.releases.sort(key=lambda x: x[1])
 
