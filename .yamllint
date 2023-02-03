@@ -1,12 +1,4 @@
 ---
-
-ignore: |
-  /node_modules/
-  /packages/backend/node_modules/
-  /packages/web/node_modules/
-  /packages/email-template-test-server/node_modules/
-  /packages/cli/node_modules/
-
 yaml-files:
   - '*.yaml'
   - '*.yml'
@@ -36,6 +28,3 @@ rules:
     spaces: consistent
     indent-sequences: whatever
     check-multi-line-strings: true
-    ignore: |
-      .semgrep/rules/**/*.yml
-      .semgrep/staging/**/*.yml

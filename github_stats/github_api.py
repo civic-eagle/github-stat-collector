@@ -9,6 +9,7 @@ A general note:
 import calendar
 from copy import deepcopy
 from datetime import datetime, timedelta
+from dateutil import parser
 import logging
 import os
 import pprint
@@ -849,6 +850,13 @@ class GithubAccess(object):
                         f"{name} doesn't exist in user cache or additional configs"
                     )
                     continue
+            start_time = parser.parse(run["run_started_at"]).timestamp()
+            """
+            the closed to 'finished' time is only collecting completed runs
+            and tracking the updated_at key
+            """
+            last_time = parser.parse(run["updated_at"]).timestamp()
+            run_time = last_time - start_time
             event = run["event"]
             # Track event stats
             if event in self.stats["workflows"]["events"]:
@@ -866,30 +874,54 @@ class GithubAccess(object):
                     self.stats["users"][user]["events"][event] = 1
                 if workflow in self.stats["users"][user]["workflows"]:
                     if status in self.stats["users"][user]["workflows"][workflow]:
-                        self.stats["users"][user]["workflows"][workflow][status] += 1
+                        self.stats["users"][user]["workflows"][workflow][status][
+                            "count"
+                        ] += 1
+                        self.stats["users"][user]["workflows"][workflow][status][
+                            "runtime"
+                        ] += run_time
                     else:
-                        self.stats["users"][user]["workflows"][workflow][status] = 1
+                        self.stats["users"][user]["workflows"][workflow][status] = {
+                            "count": 1,
+                            "runtime": run_time,
+                        }
                 else:
-                    self.stats["users"][user]["workflows"][workflow] = {status: 1}
+                    self.stats["users"][user]["workflows"][workflow] = {
+                        status: {"count": 1, "runtime": run_time}
+                    }
 
                 if status in self.stats["users"][user]["workflow_totals"]:
-                    self.stats["users"][user]["workflow_totals"][status] += 1
+                    self.stats["users"][user]["workflow_totals"][status]["count"] += 1
+                    self.stats["users"][user]["workflow_totals"][status][
+                        "runtime"
+                    ] += run_time
                 else:
-                    self.stats["users"][user]["workflow_totals"][status] = 1
+                    self.stats["users"][user]["workflow_totals"][status] = {
+                        "count": 1,
+                        "runtime": run_time,
+                    }
 
             # Track workflow stats
             if workflow in self.stats["workflows"]["workflows"]:
                 self.stats["workflows"]["workflows"][workflow]["total_window_runs"] += 1
                 if status in self.stats["workflows"]["workflows"][workflow]["runs"]:
-                    self.stats["workflows"]["workflows"][workflow]["runs"][status] += 1
+                    self.stats["workflows"]["workflows"][workflow]["runs"][status][
+                        "count"
+                    ] += 1
+                    self.stats["workflows"]["workflows"][workflow]["runs"][status][
+                        "runtime"
+                    ] += run_time
                 else:
-                    self.stats["workflows"]["workflows"][workflow]["runs"][status] = 1
+                    self.stats["workflows"]["workflows"][workflow]["runs"][status] = {
+                        "count": 1,
+                        "runtime": run_time,
+                    }
             else:
                 self.stats["workflows"]["workflows"][workflow] = {
                     "retries": 0,
                     "last_run": run["run_number"],
                     "total_window_runs": 1,
-                    "runs": {status: 1},
+                    "runs": {status: {"count": 1, "runtime": run_time}},
                 }
             if run["run_attempt"] > 1:
                 self.stats["workflows"]["workflows"][workflow]["retries"] += 1
@@ -910,11 +942,11 @@ class GithubAccess(object):
         for workflow, data in self.stats["workflows"]["workflows"].items():
             window_runs = data["total_window_runs"]
             last_run = data["last_run"]
-            success = data["runs"].get("success", 0)
-            fail = data["runs"].get("failure", 0)
-            cancelled = data["runs"].get("cancelled", 0)
-            start_fail = data["runs"].get("startup_failure", 0)
-            skipped = data["runs"].get("skipped", 0)
+            success = data["runs"].get("success", {}).get("count", 0)
+            fail = data["runs"].get("failure", {}).get("count", 0)
+            cancelled = data["runs"].get("cancelled", {}).get("count", 0)
+            start_fail = data["runs"].get("startup_failure", {}).get("count", 0)
+            skipped = data["runs"].get("skipped", {}).get("count", 0)
 
             self.stats["workflows"]["workflows"][workflow][
                 "window_runs_of_total_percentage"
