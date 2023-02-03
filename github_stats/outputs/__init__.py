@@ -331,7 +331,7 @@ class StatsOutput(object):
                                             'run_skipped_percentage': 0,
                                             'run_startup_failure_percentage': 0,
                                             'run_success_percentage': 70.31,
-                                            'runs': {'failure': 19, 'success': 45},
+                                            'runs': {'failure': 19, 'success': 45, 'runtime': 4983.8},
                                             'total_window_runs': 64,
                                             'users': [],
                                             'window_runs_of_total_percentage': 1.73},
@@ -342,7 +342,7 @@ class StatsOutput(object):
                                                  'run_skipped_percentage': 0,
                                                  'run_startup_failure_percentage': 0,
                                                  'run_success_percentage': 100.0,
-                                                 'runs': {'success': 8},
+                                                 'runs': {'success': 8, 'runtime': 678.1},
                                                  'total_window_runs': 8,
                                                  'users': [],
                                                  'window_runs_of_total_percentage': 2.75},
@@ -354,6 +354,7 @@ class StatsOutput(object):
                                                         'run_startup_failure_percentage': 0,
                                                         'run_success_percentage': 96.43,
                                                         'runs': {'failure': 1,
+                                                                 'runtime': 56,
                                                                  'success': 27},
                                                         'total_window_runs': 28,
                                                         'users': [],
@@ -423,17 +424,27 @@ class StatsOutput(object):
                 stat["measurement_type"] = "count"
                 formatted_stats.append(stat)
         for k, v in workflows.get("workflows", {}).items():
-            for rtype, val in v["runs"].items():
+            for rtype, runobj in v["runs"].items():
                 stat = deepcopy(self.tmpobj)
                 stat["name"] = "workflows_runs_total"
                 stat["measurement_type"] = "count"
                 stat["labels"]["run_type"] = rtype
                 stat["labels"]["workflow"] = k
-                stat["value"] = val
+                stat["value"] = runobj["count"]
                 stat[
                     "description"
                 ] = "Count of runs during the initial collection time range"
-            formatted_stats.append(stat)
+                formatted_stats.append(stat)
+                stat = deepcopy(self.tmpobj)
+                stat["name"] = "workflows_runtime_total"
+                stat["measurement_type"] = "count"
+                stat["labels"]["run_type"] = rtype
+                stat["labels"]["workflow"] = k
+                stat["value"] = runobj["runtime"]
+                stat[
+                    "description"
+                ] = "Time taken for a type of run during collection time range"
+                formatted_stats.append(stat)
             for key, desc in workflow_descriptions.items():
                 stat = deepcopy(self.tmpobj)
                 stat["name"] = f"workflows_{key}"
@@ -461,8 +472,9 @@ class StatsOutput(object):
                                   'total_open_pull_requests': 0,
                                   'total_pull_requests': 2,
                                   'workflow_totals': {'failure': 1, 'success': 11},
-                                  'workflows': {'CI': {'failure': 1, 'success': 7},
-                                         'security scans': {'success': 4}}},
+                                  'workflows': {'CI': {'failure': {'count': 1, 'runtime': 23},
+                                                       'success': {'count': 7, 'runtime': 250}},
+                                         'security scans': {'success': {'count': 4, 'runtime': 45}}}},
         """
         user_descriptions = {
             "window_releases_total": {
@@ -552,27 +564,46 @@ class StatsOutput(object):
                 stat["value"] = data[desc["key"]]
                 stat["description"] = desc["desc"]
                 formatted_stats.append(stat)
-            for wktype, value in data["workflow_totals"].items():
+            for wktype, runobj in data["workflow_totals"].items():
                 stat = deepcopy(self.tmpobj)
                 stat["name"] = "users_workflow_total"
                 stat["labels"]["user"] = user
                 stat["labels"]["run_type"] = wktype
                 stat["measurement_type"] = "count"
-                stat["value"] = value
+                stat["value"] = runobj["count"]
                 stat["description"] = "total count of workflow runs by a user"
                 formatted_stats.append(stat)
+                stat = deepcopy(self.tmpobj)
+                stat["name"] = "users_workflow_runtime_total"
+                stat["labels"]["user"] = user
+                stat["labels"]["run_type"] = wktype
+                stat["measurement_type"] = "count"
+                stat["value"] = runobj["runtime"]
+                stat["description"] = "total runtime of workflow runs by a user"
+                formatted_stats.append(stat)
             for workflow, wktypes in data["workflows"].items():
-                for wktype, value in wktypes.items():
+                for wktype, runobj in wktypes.items():
                     stat = deepcopy(self.tmpobj)
                     stat["name"] = "users_workflow_total"
                     stat["labels"]["workflow"] = workflow
                     stat["labels"]["user"] = user
                     stat["measurement_type"] = "count"
                     stat["labels"]["run_type"] = wktype
-                    stat["value"] = value
+                    stat["value"] = runobj["count"]
                     stat[
                         "description"
                     ] = "count of runs for a workflow by a user by workflow result"
+                    formatted_stats.append(stat)
+                    stat = deepcopy(self.tmpobj)
+                    stat["name"] = "users_workflow_runtime_total"
+                    stat["labels"]["workflow"] = workflow
+                    stat["labels"]["user"] = user
+                    stat["measurement_type"] = "count"
+                    stat["labels"]["run_type"] = wktype
+                    stat["value"] = runobj["runtime"]
+                    stat[
+                        "description"
+                    ] = "runtime for a workflow by a user by workflow result"
                     formatted_stats.append(stat)
         stat = deepcopy(self.tmpobj)
         stat["name"] = "users_dropped"
