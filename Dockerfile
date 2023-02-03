@@ -1,4 +1,4 @@
-FROM python-3.9:slim
+FROM python:3.11-slim
 
 RUN apt-get update -qq \
   && apt-get install -yqq --no-install-recommends build-essential libgit2-dev \
