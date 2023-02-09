@@ -13,7 +13,8 @@ pygit2 = "^1.11.1"
 influxdb-client = {extras = ["ciso"], version = "^1.35.0"}
 python-dateutil = "^2.8.2"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.0.0"
 flake8 = "^6.0.0"
 black = "^23"
 
