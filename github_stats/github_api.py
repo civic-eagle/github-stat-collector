@@ -275,7 +275,7 @@ class GithubAccess(object):
                 ]
         elif not self.branch_releases:
             self.log.debug("Using Github releases to track releases")
-            _ = self.load_releases(base_date, window)
+            self.load_releases(base_date, window)
         else:
             self.log.debug(f"Tracking releases as commits to {self.release_branch}")
         self.load_workflow_runs(base_date, window)

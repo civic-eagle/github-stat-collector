@@ -3,13 +3,14 @@ import logging
 import os
 import pygit2
 import time
+from typing import Generator
 
 from github_stats.util import load_patterns
 from github_stats.schema import DEFAULT_WINDOW
 
 
 class Repo(object):
-    def __init__(self, config):
+    def __init__(self, config: dict):
         self.log = logging.getLogger("github-stats.repo")
         auth_token = os.environ.get("GITHUB_TOKEN", None)
         if not auth_token:
@@ -37,7 +38,7 @@ class Repo(object):
         else:
             self._get_releases(release_type="branch")
 
-    def _prep_repo(self):
+    def _prep_repo(self) -> None:
         """
         Clone repo if it doesn't exist
         and otherwise update the main repo to current
@@ -62,7 +63,7 @@ class Repo(object):
             self.primary_branches["main"]
         ).target
 
-    def _get_releases(self, release_type="tag"):
+    def _get_releases(self, release_type: str = "tag") -> None:
         """
         find all matching releases based on defined release "type"
         and convert them to their corresponding commit objects
@@ -105,13 +106,10 @@ class Repo(object):
         # sort by commit timestamp
         self.releases.sort(key=lambda x: x[1])
 
-    def _checkout_branch(self, branch):
+    def _checkout_branch(self, branch: str) -> pygit2.Reference:
         """
         Checkout a particular branch
         and return the tracking object
-
-        :returns: branch object
-        :rtype: pygit2.Reference
         """
         self.log.debug(f"Checking out {branch}...")
         remote_id = self.repoobj.lookup_reference(f"refs/remotes/origin/{branch}")
@@ -157,7 +155,9 @@ class Repo(object):
             yield (branch_name, commit.commit_time)
         self.log.debug(f"Found {branch_count} branches in the repo")
 
-    def tag_releases(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
+    def tag_releases(
+        self, base_date: datetime = datetime.today(), window: int = DEFAULT_WINDOW
+    ) -> dict:
         """
         :returns: total count of releases, windowed releases
         """
@@ -186,7 +186,10 @@ class Repo(object):
         return release_stats
 
     def match_bugfixes(
-        self, pr_list, base_date=datetime.today(), window=DEFAULT_WINDOW
+        self,
+        pr_list: list,
+        base_date: datetime = datetime.today(),
+        window: int = DEFAULT_WINDOW,
     ):
         """
         Given a list of PRs merge commits, find the matching releases
@@ -195,15 +198,14 @@ class Repo(object):
         commit log that is newer than the commit itself
 
         :returns: rough mttr, rough windowed mttr
-        :rtype: float
         """
         if not self.releases or not pr_list:
             return 0, 0
         window_end_ts = base_date.timestamp()
         window_start_ts = (base_date - timedelta(window)).timestamp()
-        windowed_mttr = 0
+        windowed_mttr: float = 0
         windowed_releases = list()
-        mttr = 0
+        mttr: float = 0
         self.log.debug("Tracking MTTR...")
         for pr in pr_list:
             for release in self.releases:
@@ -235,7 +237,7 @@ class Repo(object):
         return mttr, windowed_mttr
 
     def commit_release_matching(
-        self, base_date=datetime.today(), window=DEFAULT_WINDOW
+        self, base_date: datetime = datetime.today(), window: int = DEFAULT_WINDOW
     ):
         """
         1. Loop through a sorted list of all commits to the repo
@@ -244,15 +246,14 @@ class Repo(object):
         4. do a rolling average on number of releases
 
         :returns: Avg commit time, avg windowed commit time, count of unreleased commits, count of all commits
-        :rtype: tuple(int, int, int, int)
         """
         window_end_ts = base_date.timestamp()
         window_start_ts = (base_date - timedelta(window)).timestamp()
-        avg_commit_time = 0
+        avg_commit_time: float = 0
         unreleased_commits = 0
         commits = 0
         windowed_releases = list()
-        windowed_commit_time = 0
+        windowed_commit_time: float = 0
         walker = self.repoobj.walk(
             self.main_branch_id, pygit2.GIT_SORT_TOPOLOGICAL | pygit2.GIT_SORT_REVERSE
         )
@@ -304,7 +305,7 @@ class Repo(object):
         else:
             return 0, 0, commits, commits
 
-    def commits_between_releases(self, release1, release2):
+    def commits_between_releases(self, release1, release2) -> list:
         """
         commit_times_output = subprocess.check_output(
             [
@@ -332,14 +333,13 @@ class Repo(object):
             commits.append(commit)
         return commits
 
-    def branch_commit_log(self, branch_name):
+    def branch_commit_log(self, branch_name: str) -> Generator:
         """
         Track all commits on a particular branch
         This doesn't work perfectly as merged branches
         are tougher to properly track
 
         :returns: generator of commit objects for a branch
-        :rtype: generator(dict())
         """
         self.log.debug(f"Loading commit log for {branch_name}...")
         commit_count = 0

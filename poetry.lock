@@ -792,6 +792,81 @@ files = [
 ]
 
 [[package]]
+name = "types-google-cloud-ndb"
+version = "2.1.0.1"
+description = "Typing stubs for google-cloud-ndb"
+category = "dev"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-google-cloud-ndb-2.1.0.1.tar.gz", hash = "sha256:6f9dfecd886551a544b182cd7d67d39db87eed4f5f5327c78b20086f52f56f2a"},
+    {file = "types_google_cloud_ndb-2.1.0.1-py3-none-any.whl", hash = "sha256:bf224b00f7bed33637c222d97d881daa30493d55da64162b1e9309a730b5ec31"},
+]
+
+[[package]]
+name = "types-python-dateutil"
+version = "2.8.19.6"
+description = "Typing stubs for python-dateutil"
+category = "dev"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-python-dateutil-2.8.19.6.tar.gz", hash = "sha256:4a6f4cc19ce4ba1a08670871e297bf3802f55d4f129e6aa2443f540b6cf803d2"},
+    {file = "types_python_dateutil-2.8.19.6-py3-none-any.whl", hash = "sha256:cfb7d31021c6bce6f3362c69af6e3abb48fe3e08854f02487e844ff910deec2a"},
+]
+
+[[package]]
+name = "types-pyyaml"
+version = "6.0.12.5"
+description = "Typing stubs for PyYAML"
+category = "dev"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-PyYAML-6.0.12.5.tar.gz", hash = "sha256:3b61b7a8111ce368eb366e4a13f3e94e568bc2ed6227e01520a50ee07993bf38"},
+    {file = "types_PyYAML-6.0.12.5-py3-none-any.whl", hash = "sha256:dcaf87b65b839e7b641721346ef8b12a87f94071e15205a64ac93ca0e0afc77a"},
+]
+
+[[package]]
+name = "types-regex"
+version = "2022.10.31.4"
+description = "Typing stubs for regex"
+category = "dev"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-regex-2022.10.31.4.tar.gz", hash = "sha256:c18275a16061b816f4c50e098300a551e89bc3b77e5549de4f4f3f048f548473"},
+    {file = "types_regex-2022.10.31.4-py3-none-any.whl", hash = "sha256:17ab5f85e47cb5bd65cb5e0d19d88301fae8c23941b9417300199164ee837ee6"},
+]
+
+[[package]]
+name = "types-requests"
+version = "2.28.11.12"
+description = "Typing stubs for requests"
+category = "dev"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-requests-2.28.11.12.tar.gz", hash = "sha256:fd530aab3fc4f05ee36406af168f0836e6f00f1ee51a0b96b7311f82cb675230"},
+    {file = "types_requests-2.28.11.12-py3-none-any.whl", hash = "sha256:dbc2933635860e553ffc59f5e264264981358baffe6342b925e3eb8261f866ee"},
+]
+
+[package.dependencies]
+types-urllib3 = "<1.27"
+
+[[package]]
+name = "types-urllib3"
+version = "1.26.25.5"
+description = "Typing stubs for urllib3"
+category = "dev"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-urllib3-1.26.25.5.tar.gz", hash = "sha256:5630e578246d170d91ebe3901788cd28d53c4e044dc2e2488e3b0d55fb6895d8"},
+    {file = "types_urllib3-1.26.25.5-py3-none-any.whl", hash = "sha256:e8f25c8bb85cde658c72ee931e56e7abd28803c26032441eea9ff4a4df2b0c31"},
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.4.0"
 description = "Backported and Experimental Type Hints for Python 3.7+"
@@ -823,4 +898,4 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "793afe80a6cb4594391e2009ce27277701d68d1bf782b05351594253ffb9e350"
+content-hash = "d2f5dc7936483000eb10d6e7e0672d318905678d820fc96104438799928eaaf1"
