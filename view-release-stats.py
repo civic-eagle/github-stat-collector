@@ -55,13 +55,6 @@ def cli_opts():
     return parser.parse_args()
 
 
-def get_time_delta_in_minutes_from_iso_strings(timeStringA, timeStringB):
-    timeA = datetime.fromisoformat(timeStringA)
-    timeB = datetime.fromisoformat(timeStringB)
-    delta = timeA - timeB
-    return delta.total_seconds() / 60
-
-
 def main():
     args = cli_opts()
     logger = logging.getLogger("github-stats")
