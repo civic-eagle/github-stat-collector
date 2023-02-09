@@ -122,7 +122,7 @@ class GithubAccess(object):
         else:
             return [], {}
 
-    def _github_query(self, url, key: str=None, params: dict=None):
+    def _github_query(self, url, key: str = None, params: dict = None):
         """
         Query paginated endpoint from Github
 
@@ -239,7 +239,9 @@ class GithubAccess(object):
             self.stats["window"] = window * 4
             self.log.debug(f"Collection window: {window}")
 
-    def load_all_stats(self, base_date: datetime=datetime.today(), window: int=DEFAULT_WINDOW) -> None:
+    def load_all_stats(
+        self, base_date: datetime = datetime.today(), window: int = DEFAULT_WINDOW
+    ) -> None:
         """
         Wrapper to execute all stat collection functions
 
@@ -279,7 +281,9 @@ class GithubAccess(object):
         self.load_workflow_runs(base_date, window)
         self.stats["collection_time_secs"] = time.time() - self.starttime
 
-    def load_pull_requests(self, base_date: datetime=datetime.today(), window: int=DEFAULT_WINDOW) -> None:
+    def load_pull_requests(
+        self, base_date: datetime = datetime.today(), window: int = DEFAULT_WINDOW
+    ) -> None:
         """
         Collect pull request data
 
@@ -410,7 +414,9 @@ class GithubAccess(object):
             f"Loaded pull requests in {self.stats['pull_requests']['collection_time']} seconds"
         )
 
-    def load_commits(self, base_date: datetime=datetime.today(), window: int=DEFAULT_WINDOW) -> None:
+    def load_commits(
+        self, base_date: datetime = datetime.today(), window: int = DEFAULT_WINDOW
+    ) -> None:
         """
         Collect commit log from pygit2
         This will not be a perfect representation of commits, but should
@@ -489,7 +495,9 @@ class GithubAccess(object):
             f"Loaded commit history in {self.stats['commits']['collection_time']} seconds"
         )
 
-    def load_branches(self, base_date: datetime=datetime.today(), window: int=DEFAULT_WINDOW) -> None:
+    def load_branches(
+        self, base_date: datetime = datetime.today(), window: int = DEFAULT_WINDOW
+    ) -> None:
         """
         Because getting branch details requires a second
         query, this function will be slower than loading
@@ -560,7 +568,9 @@ class GithubAccess(object):
             f"Loaded branch details in {self.stats['branches']['collection_time']} seconds"
         )
 
-    def load_repo_stats(self, base_date: datetime=datetime.today(), window: int=DEFAULT_WINDOW) -> None:
+    def load_repo_stats(
+        self, base_date: datetime = datetime.today(), window: int = DEFAULT_WINDOW
+    ) -> None:
         """
         This data is already visible in the "Insights" panel of a repo,
         but it's fairly easy to collect, so let's use it
@@ -770,7 +780,9 @@ class GithubAccess(object):
             f"Loaded repo stats in {self.stats['repo_stats']['collection_time']} seconds"
         )
 
-    def load_releases(self, base_date: datetime=datetime.today(), window: int=DEFAULT_WINDOW) -> None:
+    def load_releases(
+        self, base_date: datetime = datetime.today(), window: int = DEFAULT_WINDOW
+    ) -> None:
         """
         Get details about releases
 
@@ -805,7 +817,9 @@ class GithubAccess(object):
             f"Loaded release details in {self.stats['releases']['collection_time']} seconds"
         )
 
-    def load_workflow_runs(self, base_date: datetime=datetime.today(), window: int=DEFAULT_WINDOW) -> None:
+    def load_workflow_runs(
+        self, base_date: datetime = datetime.today(), window: int = DEFAULT_WINDOW
+    ) -> None:
         """
         Parse through workflow runs and collect results
 
