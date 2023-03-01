@@ -16,6 +16,7 @@ import pprint
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+import statistics
 import time
 import urllib.parse
 
@@ -787,7 +788,7 @@ class GithubAccess(object):
         Load windowed release stats
         i.e. how many releases within the last X days
         """
-        base_date = (end_date - timedelta(args.window)).timestamp()
+        base_date = (end_date - timedelta(window)).timestamp()
         last_release = None
         all_releases_commit_deltas = []
         all_releases_total_delta_in_minutes = 0
@@ -796,19 +797,19 @@ class GithubAccess(object):
         for release in releases:
             commit_hex, timestamp, author = release
             if timestamp < base_date or timestamp > end_date:
-                logger.debug(
+                self.log.debug(
                     f"{commit_hex}:{timestamp} outside release window {base_date}:{end_date}"
                 )
                 continue
-            logger.info(
+            self.log.info(
                 f"RELEASE: {commit_hex} at {timestamp} by {author}",
             )
 
             if last_release:
                 total_delta = 0
                 deltas = []
-                commits = gh.repo.commits_between_releases(last_release, release)
-                logger.info(
+                commits = self.repo.commits_between_releases(last_release, release)
+                self.log.info(
                     f"Found {len(commits)} from {last_release[0]} to {commit_hex}"
                 )
                 for commit in commits:
@@ -818,7 +819,7 @@ class GithubAccess(object):
                 release_average_delta_in_hours = round(total_delta / 60 / len(commits))
                 release_median_delta_in_hours = round(statistics.median(deltas) / 60)
                 lead_time_msg = "lead time for commit in release, in hours"
-                logger.debug(
+                self.log.debug(
                     f"Average {lead_time_msg}: {release_average_delta_in_hours}\n"
                     + f"Median {lead_time_msg}: {release_median_delta_in_hours}"
                 )
@@ -830,19 +831,20 @@ class GithubAccess(object):
 
         average_in_hours = 0
         median_in_hours = 0
+        window_message = f"{window} days before {end_date}"
         if len(releases) > 0 and all_releases_total_commits > 0:
             average_in_hours = round(
                 all_releases_total_delta_in_minutes / 60 / all_releases_total_commits
             )
             median_in_hours = round(statistics.median(all_releases_commit_deltas) / 60)
             lead_time_msg = "lead time for commit->release, in hours"
-            logger.info(
+            self.log.info(
                 f"Analyzed {len(releases)} releases found in {window_message}\n"
                 + f"Average {lead_time_msg}: {average_in_hours}\n"
                 + f"Median {lead_time_msg}: {median_in_hours}"
             )
         else:
-            logger.info(
+            self.log.info(
                 f"Found no releases in specified window of {window_message}",
             )
         self.stats["releases"]["window_stats"] = {

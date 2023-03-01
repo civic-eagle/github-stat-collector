@@ -2,11 +2,9 @@
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import copy
-from datetime import datetime, timedelta
 import logging
 import os
 import time
-import statistics
 
 # local imports
 from github_stats.github_api import GithubAccess
@@ -68,8 +66,6 @@ def main():
         local_config.pop("repos", None)
         local_config["repo"] = repo
         end_date = args.timestamp
-        end_time = datetime.utcfromtimestamp(end_date)
-        # starttime = time.time()
         gh = GithubAccess(local_config)
         gh.load_release_window_stats(end_date, args.window)
 
