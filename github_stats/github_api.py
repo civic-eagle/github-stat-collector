@@ -327,26 +327,21 @@ class GithubAccess(object):
 
             # Calculate avg PR time
             created = datetime.strptime(pull["created_at"], "%Y-%m-%dT%H:%M:%SZ")
-            closed = False
-            merged = pull.get("merged_at", None)
-            merged_ts = None
-            if not merged:
-                closed = pull.get("closed_at", None)
+            closed = pull.get("closed_at", None)
+            merged: str = pull.get("merged_at", None)
+            merged_ts: float = None
+            if merged:
                 self.stats["pull_requests"]["total_closed_pull_requests"] += 1
                 self.stats["users"][author]["total_closed_pull_requests"] += 1
+                endtime = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ")
+                merged_ts = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ").timestamp()
             else:
                 self.stats["pull_requests"]["total_merged_pull_requests"] += 1
                 self.stats["users"][author]["total_merged_pull_requests"] += 1
-            if merged or closed:
-                if merged:
-                    endtime = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ")
-                else:
-                    endtime = datetime.strptime(closed, "%Y-%m-%dT%H:%M:%SZ")
-                timeopen = (endtime - created).total_seconds()
-                self.stats["pull_requests"]["total_pr_time_open_secs"] += timeopen
-                self.stats["users"][author]["total_pr_time_open_secs"] += timeopen
-            if merged:
-                merged_ts = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ").timestamp()
+                endtime = datetime.strptime(closed, "%Y-%m-%dT%H:%M:%SZ")
+            timeopen = (endtime - created).total_seconds()
+            self.stats["pull_requests"]["total_pr_time_open_secs"] += timeopen
+            self.stats["users"][author]["total_pr_time_open_secs"] += timeopen
 
             # process/count labels of this PR
             for label in pull["labels"]:
