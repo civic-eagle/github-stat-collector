@@ -123,7 +123,7 @@ class GithubAccess(object):
         else:
             return [], {}
 
-    def _github_query(self, url, key: str = None, params: dict = None):
+    def _github_query(self, url, key: str = "", params: dict = {}):
         """
         Query paginated endpoint from Github
 
@@ -137,7 +137,7 @@ class GithubAccess(object):
         self.log.debug(f"Requesting {url}")
         req = requests.models.PreparedRequest()
         req.prepare_url(url, params)
-        data, links = self._retry_empty(req.url)
+        data, links = self._retry_empty(str(req.url))
         datatype = type(data)
         if key and datatype == dict and key in data:
             if isinstance(data[key], list):
@@ -783,7 +783,7 @@ class GithubAccess(object):
         Load windowed release stats
         i.e. how many releases within the last X days
         """
-        base_date = (end_date - timedelta(window)).timestamp()
+        base_date = end_date - timedelta(window)
         base_time = base_date.timestamp()
         end_time = end_date.timestamp()
         last_release = None
