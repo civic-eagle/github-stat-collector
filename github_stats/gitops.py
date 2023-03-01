@@ -321,12 +321,10 @@ class Repo(object):
             i for i in commit_times_split if i
         ]  # eliminate empty strings
         """
-        walker = self.repoobj.walk(release1[0], pygit2.GIT_SORT_TIME)
+        walker = self.repoobj.walk(release1[0], pygit2.GIT_SORT_TIME | pygit2.GIT_SORT_TOPOLOGICAL)
         commits = []
+        self.log.info(f"Looking at commits between {release1} and {release2}")
         for commit in walker:
-            self.log.info(
-                f"Commit {commit.hex} between {release1[0]}:{release1[1]} and {release2[0]}:{release2[1]}"
-            )
             if commit.commit_time > release2[1]:
                 self.log.debug("Found commit more recent that last release time")
                 break
