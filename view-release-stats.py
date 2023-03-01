@@ -69,70 +69,9 @@ def main():
         local_config["repo"] = repo
         end_date = args.timestamp
         end_time = datetime.utcfromtimestamp(end_date)
-        base_date = (
-            datetime.utcfromtimestamp(end_date) - timedelta(args.window)
-        ).timestamp()
         # starttime = time.time()
         gh = GithubAccess(local_config)
-        last_release = None
-        all_releases_commit_deltas = []
-        all_releases_total_delta_in_minutes = 0
-        all_releases_total_commits = 0
-        releases = list(gh.repo.releases)
-        for release in releases:
-            commit_hex, timestamp, author = release
-            if timestamp < base_date or timestamp > end_date:
-                logger.debug(
-                    f"{commit_hex}:{timestamp} outside release window {base_date}:{end_date}"
-                )
-                continue
-            logger.info(
-                f"RELEASE: {commit_hex} at {timestamp} by {author}",
-            )
-
-            if last_release:
-                total_delta = 0
-                deltas = []
-                commits = gh.repo.commits_between_releases(last_release, release)
-                logger.info(
-                    f"Found {len(commits)} from {last_release[0]} to {commit_hex}"
-                )
-                for commit in commits:
-                    delta_in_minutes = (commit.commit_time - timestamp) / 60
-                    deltas.append(delta_in_minutes)
-                    total_delta += delta_in_minutes
-                release_average_delta_in_hours = round(total_delta / 60 / len(commits))
-                release_median_delta_in_hours = round(statistics.median(deltas) / 60)
-                lead_time_msg = "lead time for commit in release, in hours"
-                logger.info(
-                    f"Average {lead_time_msg}: {release_average_delta_in_hours}",
-                )
-                logger.info(
-                    f"Median {lead_time_msg}: {release_median_delta_in_hours}",
-                )
-
-                all_releases_total_commits += len(commits)
-                all_releases_total_delta_in_minutes += total_delta
-                all_releases_commit_deltas.extend(deltas)
-
-            last_release = release
-
-        window_message = f"{args.window} days before {end_time}"
-        if len(releases) > 0 and all_releases_total_commits > 0:
-            average_in_hours = round(
-                all_releases_total_delta_in_minutes / 60 / all_releases_total_commits
-            )
-            median_in_hours = round(statistics.median(all_releases_commit_deltas) / 60)
-            lead_time_msg = "lead time for commit->release, in hours"
-            logger.info(
-                f"Analyzed {len(releases)} releases found in {window_message}",
-            )
-            logger.info(f"Average {lead_time_msg}: {average_in_hours}")
-            logger.info(f"Median {lead_time_msg}: {median_in_hours}")
-        else:
-            logger.info(
-                f"Found no releases in specified window of {window_message}",
-            )
+        gh.load_release_window_stats(end_date, args.window)
 
 
 if __name__ == "__main__":
