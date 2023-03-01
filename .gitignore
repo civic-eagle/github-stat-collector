@@ -1,4 +1,4 @@
 token
 repos/
-config.yml
+*config.yml
 __pycache__/

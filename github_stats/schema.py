@@ -1,7 +1,7 @@
 """
 Defaults for some internal data
 """
-DEFAULT_WINDOW = 1
+DEFAULT_WINDOW: int = 1
 
 user_schema = {
     "avg_pr_time_open_secs": 0,
@@ -25,12 +25,12 @@ user_schema = {
     "last_commit_time": 0,
 }
 
-user_login_cache = {
+user_login_cache: dict = {
     "names": dict(),
     "logins": dict(),
 }
 
-stats = {
+stats: dict = {
     "branches": {
         "total_branches": 0,
         "total_window_branches": 0,

@@ -2,8 +2,10 @@ repo_folder: repos
 
 repos:
   - org: organization
-    tagged_releases: false
+    tagged_releases: true
     branch_releases: false
+    # days for calculating release cadence
+    sliding_release_window: 30
     name: repo
     branches:
       main: develop

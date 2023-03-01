@@ -16,6 +16,7 @@ import pprint
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+import statistics
 import time
 import urllib.parse
 
@@ -31,7 +32,7 @@ calendar.setfirstweekday(calendar.SUNDAY)
 class GithubAccess(object):
     BASE_URL = "https://api.github.com/"
 
-    def __init__(self, config):
+    def __init__(self, config: dict):
         self.log = logging.getLogger("github-stats.collection")
         auth_token = os.environ.get("GITHUB_TOKEN", None)
         if not auth_token:
@@ -55,22 +56,23 @@ class GithubAccess(object):
         self._request.mount("https://", adapter)
         self._request.headers.update(headers)
         self.repo = Repo(config)
+        self.release_window: int = config["repo"].get("sliding_release_window", 30)
 
-        self.tagged_releases = config["repo"].get("tagged_releases", False)
-        self.branch_releases = config["repo"].get("branch_releases", False)
+        self.tagged_releases: bool = config["repo"].get("tagged_releases", False)
+        self.branch_releases: bool = config["repo"].get("branch_releases", False)
         if self.tagged_releases and self.branch_releases:
             raise Exception("Can't have tagged releases and branch releases!")
-        self.org = config["repo"]["org"]
-        self.repo_name = f"{self.org}/{config['repo']['name']}"
-        self.ignored_workflows = config["repo"].get("ignored_workflows", list())
-        self.ignored_statuses = config["repo"].get("ignored_statuses", ["queued"])
-        self.main_branch = config["repo"]["branches"].get("main", "main")
-        self.release_branch = config["repo"]["branches"].get("release", "main")
-        self.non_user_events = config["repo"].get("non_user_events", ["schedule"])
-        self.per_page = config.get("query", {}).get("results_per_page", 500)
-        self.special_logins = config["repo"].get("special_logins", {})
-        self.special_names = {v: k for k, v in self.special_logins.items()}
-        self.broken_users = config["repo"].get("broken_users", [])
+        self.org: str = config["repo"]["org"]
+        self.repo_name: str = f"{self.org}/{config['repo']['name']}"
+        self.ignored_workflows: list = config["repo"].get("ignored_workflows", list())
+        self.ignored_statuses: list = config["repo"].get("ignored_statuses", ["queued"])
+        self.main_branch: str = config["repo"]["branches"].get("main", "main")
+        self.release_branch: str = config["repo"]["branches"].get("release", "main")
+        self.non_user_events: list = config["repo"].get("non_user_events", ["schedule"])
+        self.per_page: int = config.get("query", {}).get("results_per_page", 500)
+        self.special_logins: dict = config["repo"].get("special_logins", {})
+        self.special_names: dict = {v: k for k, v in self.special_logins.items()}
+        self.broken_users: list = config["repo"].get("broken_users", [])
 
         self.tag_matches, self.bug_matches, self.pr_bug_matches = load_patterns(
             config["repo"].get("tag_patterns", []),
@@ -80,7 +82,7 @@ class GithubAccess(object):
         """
         Many label matching patterns
         """
-        self.label_matches = {
+        self.label_matches: dict = {
             labelname: labels
             for labelname, labels in config["repo"].get("additional_labels", {}).items()
         }
@@ -102,7 +104,7 @@ class GithubAccess(object):
         self.starttime = time.time()
         self._load_contributors()
 
-    def _retry_empty(self, url):
+    def _retry_empty(self, url: str):
         """
         Occasionally cold-cache queries to Github return empty results.
         We'll set up a retry loop to avoid that (since the built-in
@@ -121,7 +123,7 @@ class GithubAccess(object):
         else:
             return [], {}
 
-    def _github_query(self, url, key=None, params=None):
+    def _github_query(self, url, key: str = "", params: dict = {}):
         """
         Query paginated endpoint from Github
 
@@ -135,7 +137,7 @@ class GithubAccess(object):
         self.log.debug(f"Requesting {url}")
         req = requests.models.PreparedRequest()
         req.prepare_url(url, params)
-        data, links = self._retry_empty(req.url)
+        data, links = self._retry_empty(str(req.url))
         datatype = type(data)
         if key and datatype == dict and key in data:
             if isinstance(data[key], list):
@@ -164,7 +166,7 @@ class GithubAccess(object):
                 yield data
             next_url = links.get("next", dict()).get("url", "")
 
-    def _cache_user_login(self, login):
+    def _cache_user_login(self, login: str) -> str:
         """
         Return user's name based on their Github login
         (this is so we can avoid having two keys for the same user)
@@ -191,7 +193,7 @@ class GithubAccess(object):
         self.log.debug(f"Returned name: {self.user_login_cache['logins'][login]}")
         return self.user_login_cache["logins"][login]
 
-    def _cache_user_name(self, name):
+    def _cache_user_name(self, name: str) -> str:
         """
         Return user's actual login based on their Github name
         (this is so we can avoid having two keys for the same user)
@@ -209,7 +211,7 @@ class GithubAccess(object):
             f"User {name} doesn't exist in cache or in {self.special_logins}!"
         )
 
-    def _load_contributors(self):
+    def _load_contributors(self) -> None:
         """
         Configure all users that have commits into the repo
 
@@ -230,7 +232,7 @@ class GithubAccess(object):
             f"Loaded contributors in {self.contributor_collection_time} seconds"
         )
 
-    def _set_collection_date(self, date, window):
+    def _set_collection_date(self, date: datetime, window: int) -> None:
         if not self.stats["collection_date"]:
             self.stats["collection_date"] = date
             self.log.debug(f"Collection timestamp: {date}")
@@ -238,7 +240,9 @@ class GithubAccess(object):
             self.stats["window"] = window * 4
             self.log.debug(f"Collection window: {window}")
 
-    def load_all_stats(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
+    def load_all_stats(
+        self, base_date: datetime = datetime.today(), window: int = DEFAULT_WINDOW
+    ) -> None:
         """
         Wrapper to execute all stat collection functions
 
@@ -278,7 +282,9 @@ class GithubAccess(object):
         self.load_workflow_runs(base_date, window)
         self.stats["collection_time_secs"] = time.time() - self.starttime
 
-    def load_pull_requests(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
+    def load_pull_requests(
+        self, base_date: datetime = datetime.today(), window: int = DEFAULT_WINDOW
+    ) -> None:
         """
         Collect pull request data
 
@@ -321,26 +327,21 @@ class GithubAccess(object):
 
             # Calculate avg PR time
             created = datetime.strptime(pull["created_at"], "%Y-%m-%dT%H:%M:%SZ")
-            closed = False
-            merged = pull.get("merged_at", None)
-            merged_ts = None
-            if not merged:
-                closed = pull.get("closed_at", None)
+            closed = pull.get("closed_at", None)
+            merged: str = pull.get("merged_at", None)
+            merged_ts: float = None
+            if merged:
                 self.stats["pull_requests"]["total_closed_pull_requests"] += 1
                 self.stats["users"][author]["total_closed_pull_requests"] += 1
+                endtime = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ")
+                merged_ts = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ").timestamp()
             else:
                 self.stats["pull_requests"]["total_merged_pull_requests"] += 1
                 self.stats["users"][author]["total_merged_pull_requests"] += 1
-            if merged or closed:
-                if merged:
-                    endtime = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ")
-                else:
-                    endtime = datetime.strptime(closed, "%Y-%m-%dT%H:%M:%SZ")
-                timeopen = (endtime - created).total_seconds()
-                self.stats["pull_requests"]["total_pr_time_open_secs"] += timeopen
-                self.stats["users"][author]["total_pr_time_open_secs"] += timeopen
-            if merged:
-                merged_ts = datetime.strptime(merged, "%Y-%m-%dT%H:%M:%SZ").timestamp()
+                endtime = datetime.strptime(closed, "%Y-%m-%dT%H:%M:%SZ")
+            timeopen = (endtime - created).total_seconds()
+            self.stats["pull_requests"]["total_pr_time_open_secs"] += timeopen
+            self.stats["users"][author]["total_pr_time_open_secs"] += timeopen
 
             # process/count labels of this PR
             for label in pull["labels"]:
@@ -409,7 +410,9 @@ class GithubAccess(object):
             f"Loaded pull requests in {self.stats['pull_requests']['collection_time']} seconds"
         )
 
-    def load_commits(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
+    def load_commits(
+        self, base_date: datetime = datetime.today(), window: int = DEFAULT_WINDOW
+    ) -> None:
         """
         Collect commit log from pygit2
         This will not be a perfect representation of commits, but should
@@ -488,7 +491,9 @@ class GithubAccess(object):
             f"Loaded commit history in {self.stats['commits']['collection_time']} seconds"
         )
 
-    def load_branches(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
+    def load_branches(
+        self, base_date: datetime = datetime.today(), window: int = DEFAULT_WINDOW
+    ) -> None:
         """
         Because getting branch details requires a second
         query, this function will be slower than loading
@@ -559,7 +564,9 @@ class GithubAccess(object):
             f"Loaded branch details in {self.stats['branches']['collection_time']} seconds"
         )
 
-    def load_repo_stats(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
+    def load_repo_stats(
+        self, base_date: datetime = datetime.today(), window: int = DEFAULT_WINDOW
+    ) -> None:
         """
         This data is already visible in the "Insights" panel of a repo,
         but it's fairly easy to collect, so let's use it
@@ -769,7 +776,83 @@ class GithubAccess(object):
             f"Loaded repo stats in {self.stats['repo_stats']['collection_time']} seconds"
         )
 
-    def load_releases(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
+    def load_release_window_stats(
+        self, end_date: datetime = datetime.today(), window: int = 30
+    ) -> None:
+        """
+        Load windowed release stats
+        i.e. how many releases within the last X days
+        """
+        base_date = end_date - timedelta(window)
+        base_time = base_date.timestamp()
+        end_time = end_date.timestamp()
+        last_release = None
+        all_releases_commit_deltas = []
+        all_releases_total_delta_in_minutes = 0
+        all_releases_total_commits = 0
+        releases = list(self.repo.releases)
+        for release in releases:
+            commit_hex, timestamp, author = release
+            if timestamp < base_time or timestamp > end_time:
+                self.log.debug(
+                    f"{commit_hex}:{timestamp} outside release window {base_time}:{end_time}"
+                )
+                continue
+            self.log.info(
+                f"RELEASE: {commit_hex} at {timestamp} by {author}",
+            )
+
+            if last_release:
+                total_delta = 0
+                deltas = []
+                commits = self.repo.commits_between_releases(last_release, release)
+                self.log.info(
+                    f"Found {len(commits)} from {last_release[0]} to {commit_hex}"
+                )
+                for commit in commits:
+                    delta_in_minutes = (commit.commit_time - timestamp) / 60
+                    deltas.append(delta_in_minutes)
+                    total_delta += delta_in_minutes
+                release_average_delta_in_hours = round(total_delta / 60 / len(commits))
+                release_median_delta_in_hours = round(statistics.median(deltas) / 60)
+                lead_time_msg = "lead time for commit in release, in hours"
+                self.log.debug(
+                    f"Average {lead_time_msg}: {release_average_delta_in_hours}\n"
+                    + f"Median {lead_time_msg}: {release_median_delta_in_hours}"
+                )
+
+                all_releases_total_commits += len(commits)
+                all_releases_total_delta_in_minutes += total_delta
+                all_releases_commit_deltas.extend(deltas)
+            last_release = release
+
+        average_in_hours = 0
+        median_in_hours = 0
+        window_message = f"{window} days before {end_time}"
+        if len(releases) > 0 and all_releases_total_commits > 0:
+            average_in_hours = round(
+                all_releases_total_delta_in_minutes / 60 / all_releases_total_commits
+            )
+            median_in_hours = round(statistics.median(all_releases_commit_deltas) / 60)
+            lead_time_msg = "lead time for commit->release, in hours"
+            self.log.info(
+                f"Analyzed {len(releases)} releases found in {window_message}\n"
+                + f"Average {lead_time_msg}: {average_in_hours}\n"
+                + f"Median {lead_time_msg}: {median_in_hours}"
+            )
+        else:
+            self.log.info(
+                f"Found no releases in specified window of {window_message}",
+            )
+        self.stats["releases"]["window_stats"] = {
+            "windowed_release_count": len(releases),
+            "avg_lead_time": average_in_hours,
+            "median_lead_time": median_in_hours,
+        }
+
+    def load_releases(
+        self, base_date: datetime = datetime.today(), window: int = DEFAULT_WINDOW
+    ) -> None:
         """
         Get details about releases
 
@@ -804,7 +887,9 @@ class GithubAccess(object):
             f"Loaded release details in {self.stats['releases']['collection_time']} seconds"
         )
 
-    def load_workflow_runs(self, base_date=datetime.today(), window=DEFAULT_WINDOW):
+    def load_workflow_runs(
+        self, base_date: datetime = datetime.today(), window: int = DEFAULT_WINDOW
+    ) -> None:
         """
         Parse through workflow runs and collect results
 
