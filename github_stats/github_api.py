@@ -789,6 +789,8 @@ class GithubAccess(object):
         i.e. how many releases within the last X days
         """
         base_date = (end_date - timedelta(window)).timestamp()
+        base_time = base_date.timestamp()
+        end_time = end_date.timestamp()
         last_release = None
         all_releases_commit_deltas = []
         all_releases_total_delta_in_minutes = 0
@@ -796,9 +798,9 @@ class GithubAccess(object):
         releases = list(self.repo.releases)
         for release in releases:
             commit_hex, timestamp, author = release
-            if timestamp < base_date or timestamp > end_date:
+            if timestamp < base_time or timestamp > end_time:
                 self.log.debug(
-                    f"{commit_hex}:{timestamp} outside release window {base_date}:{end_date}"
+                    f"{commit_hex}:{timestamp} outside release window {base_time}:{end_time}"
                 )
                 continue
             self.log.info(
@@ -831,7 +833,7 @@ class GithubAccess(object):
 
         average_in_hours = 0
         median_in_hours = 0
-        window_message = f"{window} days before {end_date}"
+        window_message = f"{window} days before {end_time}"
         if len(releases) > 0 and all_releases_total_commits > 0:
             average_in_hours = round(
                 all_releases_total_delta_in_minutes / 60 / all_releases_total_commits
