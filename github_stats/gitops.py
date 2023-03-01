@@ -321,7 +321,9 @@ class Repo(object):
             i for i in commit_times_split if i
         ]  # eliminate empty strings
         """
-        walker = self.repoobj.walk(release1[0], pygit2.GIT_SORT_TIME | pygit2.GIT_SORT_TOPOLOGICAL)
+        walker = self.repoobj.walk(
+            release1[0], pygit2.GIT_SORT_TIME | pygit2.GIT_SORT_TOPOLOGICAL
+        )
         commits = []
         self.log.info(f"Looking at commits between {release1} and {release2}")
         for commit in walker:

@@ -94,15 +94,15 @@ def main():
                 total_delta = 0
                 deltas = []
                 commits = gh.repo.commits_between_releases(last_release, release)
-                logger.info(f"Found {len(commits)} from {last_release[0]} to {commit_hex}")
+                logger.info(
+                    f"Found {len(commits)} from {last_release[0]} to {commit_hex}"
+                )
                 for commit in commits:
                     delta_in_minutes = (commit.commit_time - timestamp) / 60
                     deltas.append(delta_in_minutes)
                     total_delta += delta_in_minutes
                 release_average_delta_in_hours = round(total_delta / 60 / len(commits))
-                release_median_delta_in_hours = round(
-                    statistics.median(deltas) / 60
-                )
+                release_median_delta_in_hours = round(statistics.median(deltas) / 60)
                 lead_time_msg = "lead time for commit in release, in hours"
                 logger.info(
                     f"Average {lead_time_msg}: {release_average_delta_in_hours}",
@@ -122,9 +122,7 @@ def main():
             average_in_hours = round(
                 all_releases_total_delta_in_minutes / 60 / all_releases_total_commits
             )
-            median_in_hours = round(
-                statistics.median(all_releases_commit_deltas) / 60
-            )
+            median_in_hours = round(statistics.median(all_releases_commit_deltas) / 60)
             lead_time_msg = "lead time for commit->release, in hours"
             logger.info(
                 f"Analyzed {len(releases)} releases found in {window_message}",
